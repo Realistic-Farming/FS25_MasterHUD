@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="92">
+    <author>TisonK</author>
+    <version>1.0.0.0</version>
+    <modName>FS25_MasterHUD</modName>
+
+    <title>
+        <en><![CDATA[Realistic Farming - Master HUD]]></en>
+        <de><![CDATA[Realistic Farming - Master HUD]]></de>
+        <fr><![CDATA[Realistic Farming - Master HUD]]></fr>
+        <nl><![CDATA[Realistic Farming - Master HUD]]></nl>
+        <it><![CDATA[Realistic Farming - Master HUD]]></it>
+        <pl><![CDATA[Realistic Farming - Master HUD]]></pl>
+        <es><![CDATA[Realistic Farming - Master HUD]]></es>
+        <ea><![CDATA[Realistic Farming - Master HUD]]></ea>
+        <pt><![CDATA[Realistic Farming - Master HUD]]></pt>
+        <br><![CDATA[Realistic Farming - Master HUD]]></br>
+        <ru><![CDATA[Realistic Farming - Master HUD]]></ru>
+        <uk><![CDATA[Realistic Farming - Master HUD]]></uk>
+        <cz><![CDATA[Realistic Farming - Master HUD]]></cz>
+        <hu><![CDATA[Realistic Farming - Master HUD]]></hu>
+        <ro><![CDATA[Realistic Farming - Master HUD]]></ro>
+        <tr><![CDATA[Realistic Farming - Master HUD]]></tr>
+        <fi><![CDATA[Realistic Farming - Master HUD]]></fi>
+        <no><![CDATA[Realistic Farming - Master HUD]]></no>
+        <sv><![CDATA[Realistic Farming - Master HUD]]></sv>
+        <da><![CDATA[Realistic Farming - Master HUD]]></da>
+        <kr><![CDATA[Realistic Farming - Master HUD]]></kr>
+        <jp><![CDATA[Realistic Farming - Master HUD]]></jp>
+        <ct><![CDATA[Realistic Farming - Master HUD]]></ct>
+        <fc><![CDATA[Realistic Farming - Master HUD]]></fc>
+        <id><![CDATA[Realistic Farming - Master HUD]]></id>
+        <vi><![CDATA[Realistic Farming - Master HUD]]></vi>
+    </title>
+
+    <description>
+        <en><![CDATA[Required library for the Realistic Farming mod ecosystem. Draws every companion mod's on-screen overlay from one shared render loop, so the mods do not each rebuild HUD text every frame. Lighter on performance and consistent on screen. No settings and nothing to configure. Install it and let it run.]]></en>
+        <de><![CDATA[Erforderliche Bibliothek für das Realistic Farming Mod-Ökosystem. Zeichnet die Bildschirmanzeige jedes Begleitmods über eine gemeinsame Renderschleife, sodass nicht jeder Mod den HUD-Text in jedem Frame neu erstellt. Leichter für die Leistung. Keine Einstellungen.]]></de>
+        <fr><![CDATA[Bibliothèque requise pour l'écosystème de mods Realistic Farming. Dessine l'affichage à l'écran de chaque mod compagnon depuis une seule boucle de rendu partagée, pour que les mods ne reconstruisent pas le texte du HUD à chaque image. Plus léger. Aucun réglage.]]></fr>
+        <nl><![CDATA[Vereiste bibliotheek voor het Realistic Farming mod-ecosysteem. Tekent de schermweergave van elke bijbehorende mod vanuit één gedeelde renderlus, zodat de mods niet elke frame de HUD-tekst opnieuw opbouwen. Lichter voor de prestaties. Geen instellingen.]]></nl>
+        <it><![CDATA[Libreria richiesta per l'ecosistema di mod Realistic Farming. Disegna la sovrimpressione di ogni mod compagno da un unico ciclo di rendering condiviso, così i mod non ricostruiscono il testo dell'HUD ad ogni fotogramma. Piu leggero. Nessuna impostazione.]]></it>
+        <pl><![CDATA[Wymagana biblioteka dla ekosystemu modów Realistic Farming. Rysuje ekranowe nakładki wszystkich modów towarzyszących z jednej wspólnej pętli renderowania, więc mody nie przebudowują tekstu HUD w każdej klatce. Lżejsze dla wydajności. Brak ustawień.]]></pl>
+        <es><![CDATA[Biblioteca requerida para el ecosistema de mods Realistic Farming. Dibuja la superposición en pantalla de cada mod compañero desde un único bucle de renderizado compartido, para que los mods no reconstruyan el texto del HUD en cada fotograma. Mas ligero. Sin ajustes.]]></es>
+        <ea><![CDATA[Biblioteca requerida para el ecosistema de mods Realistic Farming. Dibuja la superposición en pantalla de cada mod compañero desde un único bucle de renderizado compartido, para que los mods no reconstruyan el texto del HUD en cada fotograma. Mas ligero. Sin ajustes.]]></ea>
+        <pt><![CDATA[Biblioteca necessária para o ecossistema de mods Realistic Farming. Desenha a sobreposição de tela de cada mod companheiro a partir de um único ciclo de renderização compartilhado, para que os mods não reconstruam o texto do HUD a cada quadro. Mais leve. Sem configurações.]]></pt>
+        <br><![CDATA[Biblioteca necessária para o ecossistema de mods Realistic Farming. Desenha a sobreposição de tela de cada mod companheiro a partir de um único ciclo de renderização compartilhado, para que os mods não reconstruam o texto do HUD a cada quadro. Mais leve. Sem configurações.]]></br>
+        <ru><![CDATA[Необходимая библиотека для экосистемы модов Realistic Farming. Рисует экранные наложения всех сопутствующих модов из одного общего цикла отрисовки, чтобы моды не перестраивали текст HUD каждый кадр. Легче для производительности. Настроек нет.]]></ru>
+        <uk><![CDATA[Необхідна бібліотека для екосистеми модів Realistic Farming. Малює екранні накладки всіх супутніх модів з одного спільного циклу рендерингу, щоб моди не перебудовували текст HUD щокадру. Легше для продуктивності. Немає налаштувань.]]></uk>
+        <cz><![CDATA[Vyžadovaná knihovna pro ekosystém modů Realistic Farming. Vykresluje obrazovkové překryvy všech doprovodných modů z jedné sdílené vykreslovací smyčky, takže mody neskládají text HUD každý snímek. Šetrnější k výkonu. Žádná nastavení.]]></cz>
+        <hu><![CDATA[Szükséges könyvtár a Realistic Farming mod-ökoszisztémához. Minden társmod képernyőfedvényét egyetlen közös rajzolási ciklusból rajzolja, így a modok nem építik újra a HUD-szöveget minden képkockában. Kíméletesebb a teljesítményre. Nincs beállítás.]]></hu>
+        <ro><![CDATA[Bibliotecă necesară pentru ecosistemul de moduri Realistic Farming. Desenează suprapunerea pe ecran a fiecărui mod însoțitor dintr-o singură buclă de randare partajată, astfel încât modurile să nu reconstruiască textul HUD la fiecare cadru. Mai ușor. Fără setări.]]></ro>
+        <tr><![CDATA[Realistic Farming mod ekosistemi için gerekli kütüphane. Her yardımcı modun ekran bindirmesini tek bir ortak çizim döngüsünden çizer, böylece modlar HUD metnini her karede yeniden oluşturmaz. Performansa daha hafif. Ayar yok.]]></tr>
+        <fi><![CDATA[Realistic Farming -modiekosysteemin vaatima kirjasto. Piirtää jokaisen liitännäismodin näyttöpeitteen yhdestä jaetusta piirtosilmukasta, joten modit eivät rakenna HUD-tekstiä uudelleen joka ruudulla. Kevyempi suorituskyvylle. Ei asetuksia.]]></fi>
+        <no><![CDATA[Nødvendig bibliotek for Realistic Farming-modøkosystemet. Tegner skjermoverlegget til hver tilhørende mod fra én delt tegneløkke, slik at modene ikke bygger HUD-teksten på nytt hver bilderute. Lettere for ytelsen. Ingen innstillinger.]]></no>
+        <sv><![CDATA[Obligatoriskt bibliotek för Realistic Farming-modekosystemet. Ritar varje följemodds skärmöverlägg från en enda delad renderingsslinga, så att moddarna inte bygger om HUD-texten varje bildruta. Lättare för prestandan. Inga inställningar.]]></sv>
+        <da><![CDATA[Påkrævet bibliotek til Realistic Farming-mod-økosystemet. Tegner hver ledsagermods skærmoverlay fra én delt tegneløkke, så modderne ikke genopbygger HUD-teksten hver billedramme. Lettere for ydelsen. Ingen indstillinger.]]></da>
+        <kr><![CDATA[Realistic Farming 모드 생태계에 필요한 라이브러리입니다. 모든 동반 모드의 화면 오버레이를 하나의 공유 렌더 루프에서 그려, 모드들이 매 프레임 HUD 텍스트를 다시 만들지 않게 합니다. 성능에 더 가볍습니다. 설정 없음.]]></kr>
+        <jp><![CDATA[Realistic Farming モッドエコシステムに必要なライブラリです。各関連モッドの画面オーバーレイを1つの共有描画ループで描画し、モッドが毎フレームHUDテキストを作り直さないようにします。処理が軽くなります。設定はありません。]]></jp>
+        <ct><![CDATA[Realistic Farming 模組生態系所需的函式庫。以單一共用繪製迴圈繪製每個配套模組的畫面疊層，讓各模組不必每一影格重建 HUD 文字。對效能更輕量。無需設定。]]></ct>
+        <fc><![CDATA[Realistic Farming 模组生态系统所需的库。以单一共享绘制循环绘制每个配套模组的屏幕叠层，让各模组不必每一帧重建 HUD 文本。对性能更轻量。无需设置。]]></fc>
+        <id><![CDATA[Pustaka yang diperlukan untuk ekosistem mod Realistic Farming. Menggambar overlay layar setiap mod pendamping dari satu loop render bersama, sehingga mod tidak membangun ulang teks HUD setiap frame. Lebih ringan untuk performa. Tanpa pengaturan.]]></id>
+        <vi><![CDATA[Thư viện bắt buộc cho hệ sinh thái mod Realistic Farming. Vẽ lớp phủ màn hình của mọi mod đồng hành từ một vòng lặp vẽ dùng chung, để các mod không phải dựng lại chữ HUD mỗi khung hình. Nhẹ hơn cho hiệu năng. Không có cài đặt.]]></vi>
+    </description>
+
+    <iconFilename>icon.dds</iconFilename>
+
+    <multiplayer supported="true"/>
+
+    <dependencies>
+        <dependency>FS25_StateLedger</dependency>
+    </dependencies>
+
+    <extraSourceFiles>
+        <sourceFile filename="main.lua" />
+    </extraSourceFiles>
+</modDesc>
