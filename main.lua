@@ -56,6 +56,16 @@ if FSBaseMission.mouseEvent ~= nil then
     )
 end
 
+-- Route key events to interactive panels (guarded: only if the hook exists).
+if FSBaseMission.keyEvent ~= nil then
+    FSBaseMission.keyEvent = Utils.appendedFunction(
+        FSBaseMission.keyEvent,
+        function(mission, action, value)
+            masterHUD:onKeyEvent(action, value)
+        end
+    )
+end
+
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, onMissionDelete)
 
 if addConsoleCommand ~= nil then
