@@ -120,7 +120,7 @@ function MasterHUD:setOverlayVisible(id, visible)
     local entry = self.overlays[id] or self.selfDraws[id] or self.panels[id]
     if entry ~= nil then
         entry.visible = visible == true
-        if entry.isDirty ~= nil and visible then entry.isDirty = true end  -- refresh stale cache
+        if type(entry.isDirty) == "boolean" and visible then entry.isDirty = true end
     end
 end
 
@@ -190,10 +190,10 @@ function MasterHUD:draw()
                 local ok, lines = pcall(o.fetchCallback)
                 if ok and type(lines) == "table" then
                     o.cachedLines = lines
+                    o.isDirty = false
                 elseif not ok then
                     MHLogger.error("overlay '%s' fetch failed: %s (keeping last cache)", id, tostring(lines))
                 end
-                o.isDirty = false
             end
             local a = o.config.anchor or "ANCHOR_TOP_RIGHT"
             table.insert(byAnchor[a], o)
@@ -258,6 +258,12 @@ function MasterHUD:delete()
     if self.renderer ~= nil then
         self.renderer:delete()
     end
+    self.overlays = {}
+    self.overlayOrder = {}
+    self.selfDraws = {}
+    self.selfDrawOrder = {}
+    self.panels = {}
+    self.panelOrder = {}
 end
 
 -- =========================================================
