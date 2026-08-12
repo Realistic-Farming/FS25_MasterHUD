@@ -40,6 +40,13 @@ function MasterHUD.new()
     self.panelOrder    = {}
     self.suspended     = false
 
+    -- Suite-wide hide / shared layout-edit (vanilla HUD is never touched).
+    self.hudsHidden      = false
+    self.layoutEditMode  = false
+    self.editListeners   = {}   -- id -> { enter = fn, exit = fn }
+    self.editListenerOrder = {}
+    self.onHudsHiddenChanged = nil  -- optional persist callback set by main.lua
+
     self.renderer = OverlayRenderer.new()
     return self
 end
@@ -149,6 +156,101 @@ function MasterHUD:unregisterPanel(id)
 end
 
 -- =========================================================
+-- Suite-wide hide / shared layout-edit
+-- =========================================================
+
+function MasterHUD:areHudsHidden()
+    return self.hudsHidden == true
+end
+
+function MasterHUD:setHudsHidden(hidden)
+    hidden = hidden == true
+    if self.hudsHidden == hidden then return end
+    self.hudsHidden = hidden
+    -- Leaving hide while edit is on keeps edit; entering hide exits edit so
+    -- companions are not left in a drag state the player cannot see.
+    if hidden and self.layoutEditMode then
+        self:setLayoutEditMode(false)
+    end
+    if type(self.onHudsHiddenChanged) == "function" then
+        pcall(self.onHudsHiddenChanged, hidden)
+    end
+    -- #region agent log
+    Logging.info("[MH-DEBUG][E] setHudsHidden hidden=%s listeners=%d", tostring(hidden), #(self.editListenerOrder or {}))
+    -- #endregion
+    MHLogger.info("Suite HUDs %s", hidden and "hidden" or "shown")
+end
+
+function MasterHUD:toggleHudsHidden()
+    -- #region agent log
+    Logging.info("[MH-DEBUG][D] toggleHudsHidden invoked wasHidden=%s", tostring(self.hudsHidden == true))
+    -- #endregion
+    self:setHudsHidden(not self.hudsHidden)
+end
+
+function MasterHUD:isLayoutEditMode()
+    return self.layoutEditMode == true
+end
+
+function MasterHUD:setLayoutEditMode(enabled)
+    enabled = enabled == true
+    if self.layoutEditMode == enabled then return end
+
+    -- Edit needs the overlays visible so the player can find what to drag.
+    if enabled and self.hudsHidden then
+        self:setHudsHidden(false)
+    end
+
+    self.layoutEditMode = enabled
+    for _, id in ipairs(self.editListenerOrder) do
+        local listener = self.editListeners[id]
+        if listener ~= nil then
+            local fn = enabled and listener.enter or listener.exit
+            if type(fn) == "function" then
+                pcall(fn)
+            end
+        end
+    end
+    MHLogger.info("Suite HUD layout edit %s (Ctrl+#)", enabled and "ON" or "OFF")
+end
+
+function MasterHUD:toggleLayoutEditMode()
+    -- #region agent log
+    Logging.info("[MH-DEBUG][D] toggleLayoutEditMode invoked wasEdit=%s", tostring(self.layoutEditMode == true))
+    -- #endregion
+    self:setLayoutEditMode(not self.layoutEditMode)
+end
+
+function MasterHUD:registerEditListener(id, spec)
+    if type(id) ~= "string" or id == "" or type(spec) ~= "table" then
+        MHLogger.warning("registerEditListener('%s'): needs id + { enter, exit }", tostring(id))
+        return false
+    end
+    if self.editListeners[id] == nil then
+        table.insert(self.editListenerOrder, id)
+    end
+    self.editListeners[id] = {
+        enter = spec.enter,
+        exit = spec.exit,
+    }
+    -- If edit mode is already on, bring the new listener in immediately.
+    if self.layoutEditMode and type(spec.enter) == "function" then
+        pcall(spec.enter)
+    end
+    MHLogger.debug("Registered edit listener '%s'", id)
+    return true
+end
+
+function MasterHUD:unregisterEditListener(id)
+    if self.editListeners[id] == nil then return end
+    if self.layoutEditMode and type(self.editListeners[id].exit) == "function" then
+        pcall(self.editListeners[id].exit)
+    end
+    self.editListeners[id] = nil
+    removeFromOrder(self.editListenerOrder, id)
+end
+
+-- =========================================================
 -- Admin gate (interactive adminOnly panels)
 -- =========================================================
 
@@ -174,10 +276,13 @@ function MasterHUD:onDraw()
     -- Suspend while any menu or dialog is up (proven guard from SoilFertilizer).
     self.suspended = g_gui ~= nil and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible())
     if self.suspended then return end
+    -- Suite hide: skip every RF overlay/self-draw/panel. Vanilla HUD is untouched.
+    if self.hudsHidden then return end
     self:draw()
 end
 
 function MasterHUD:draw()
+    if self.hudsHidden then return end
     -- Text overlays: refresh dirty caches, group by anchor, stack by priority.
     local byAnchor = {
         ANCHOR_TOP_LEFT = {}, ANCHOR_TOP_RIGHT = {},
@@ -231,7 +336,7 @@ end
 -- =========================================================
 
 function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
-    if self.suspended then return end
+    if self.suspended or self.hudsHidden then return end
     for _, id in ipairs(self.panelOrder) do
         local p = self.panels[id]
         if p ~= nil and p.visible and type(p.onMouse) == "function"
@@ -243,7 +348,7 @@ function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
 end
 
 function MasterHUD:onKeyEvent(action, value)
-    if self.suspended then return end
+    if self.suspended or self.hudsHidden then return end
     for _, id in ipairs(self.panelOrder) do
         local p = self.panels[id]
         if p ~= nil and p.visible and type(p.onInput) == "function"
@@ -255,6 +360,9 @@ function MasterHUD:onKeyEvent(action, value)
 end
 
 function MasterHUD:delete()
+    if self.layoutEditMode then
+        self:setLayoutEditMode(false)
+    end
     if self.renderer ~= nil then
         self.renderer:delete()
     end
@@ -264,6 +372,8 @@ function MasterHUD:delete()
     self.selfDrawOrder = {}
     self.panels = {}
     self.panelOrder = {}
+    self.editListeners = {}
+    self.editListenerOrder = {}
 end
 
 -- =========================================================
@@ -272,8 +382,11 @@ end
 
 function MasterHUD:getStatus()
     local lines = {}
-    table.insert(lines, string.format("MasterHUD: %d overlay(s), %d self-draw(s), %d panel(s), suspended=%s",
-        #self.overlayOrder, #self.selfDrawOrder, #self.panelOrder, tostring(self.suspended)))
+    table.insert(lines, string.format(
+        "MasterHUD: %d overlay(s), %d self-draw(s), %d panel(s), suspended=%s, hudsHidden=%s, layoutEdit=%s, editListeners=%d",
+        #self.overlayOrder, #self.selfDrawOrder, #self.panelOrder,
+        tostring(self.suspended), tostring(self.hudsHidden),
+        tostring(self.layoutEditMode), #self.editListenerOrder))
     for _, id in ipairs(self.overlayOrder) do
         local o = self.overlays[id]
         table.insert(lines, string.format("  overlay %s (anchor %s, visible %s)",
@@ -282,6 +395,9 @@ function MasterHUD:getStatus()
     for _, id in ipairs(self.panelOrder) do
         table.insert(lines, string.format("  panel %s (adminOnly %s, visible %s)",
             id, tostring(self.panels[id].adminOnly), tostring(self.panels[id].visible)))
+    end
+    for _, id in ipairs(self.editListenerOrder) do
+        table.insert(lines, string.format("  editListener %s", id))
     end
     return table.concat(lines, "\n")
 end
