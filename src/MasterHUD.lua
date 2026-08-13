@@ -11,9 +11,15 @@
 --
 -- Three registration paths (A1 / F11):
 --   registerOverlay(id, config, fetchCallback)  simple text MasterHUD renders
---   subscribe(id, { draw, isDirty })            self-drawn display element
+--   subscribe(id, { draw, isDirty, isFullscreen }) self-drawn display element
 --   registerPanel(id, { draw, onMouse, onInput, isFullscreen, adminOnly })
 --                                               self-draw + input
+--
+-- isFullscreen declares that an element currently owns the WHOLE screen. It may
+-- be `true` (always) or a FUNCTION returning true only while the element's panel
+-- is actually open, which is the useful form for a panel the player toggles.
+-- While one element claims the screen, every other element stands down: see
+-- getFullscreenOwner below for why that is the only correct response.
 -- MasterHUD owns the single draw loop, menu-suspend, and unload cleanup for
 -- all three. Positional / world-space overlays (e.g. SoilFertilizer's spray /
 -- harvest / tillage trails) do NOT fit the corner-anchored overlay model;
@@ -88,7 +94,14 @@ function MasterHUD:subscribe(id, spec)
         MHLogger.warning("subscribe('%s'): needs { draw = fn }", tostring(id)); return false
     end
     if self.selfDraws[id] == nil then table.insert(self.selfDrawOrder, id) end
-    self.selfDraws[id] = { draw = spec.draw, isDirty = spec.isDirty, visible = true }
+    -- isFullscreen is stored RAW so it can be a boolean or a function; see
+    -- claimsScreen. Omitting it is the default and behaves exactly as before.
+    self.selfDraws[id] = {
+        draw = spec.draw,
+        isDirty = spec.isDirty,
+        isFullscreen = spec.isFullscreen,
+        visible = true,
+    }
     MHLogger.debug("Subscribed self-draw '%s'", id)
     return true
 end
@@ -106,7 +119,9 @@ function MasterHUD:registerPanel(id, spec)
         draw = spec.draw,
         onMouse = spec.onMouse,
         onInput = spec.onInput,
-        isFullscreen = spec.isFullscreen == true,
+        -- Kept RAW rather than coerced with `== true`, so a function is preserved
+        -- as a function. A plain boolean behaves exactly as it did before.
+        isFullscreen = spec.isFullscreen,
         adminOnly = spec.adminOnly == true,
         visible = true,
     }
@@ -281,8 +296,64 @@ function MasterHUD:onDraw()
     self:draw()
 end
 
+-- Does this entry currently claim the whole screen? `true` means always, a
+-- function means "ask it", anything else means no. pcall'd because a companion's
+-- callback must never be able to take down the draw loop.
+local function claimsScreen(entry)
+    local v = entry.isFullscreen
+    if v == true then return true end
+    if type(v) == "function" then
+        local ok, r = pcall(v)
+        return ok and r == true
+    end
+    return false
+end
+
+--- The element currently owning the whole screen, if any.
+---
+--- WHY THIS EXISTS. A panel background is an OVERLAY, and an overlay does not
+--- cover text that was already rendered underneath it. So when a companion draws
+--- a full-screen panel, every HUD drawn before it reads straight THROUGH the
+--- panel, and every HUD drawn after it paints over the top. Neither is fixable
+--- from the panel's side: the others have to not draw.
+---
+--- This is the same rule as the menu-suspend in onDraw, extended to the surfaces
+--- g_gui cannot see. g_gui only knows about engine dialogs and menus; a companion
+--- panel drawn with renderOverlay is invisible to it. The suspend guard was
+--- copied from SoilFertilizer along with that blind spot, and this closes it.
+---
+---@return string|nil id, string|nil kind  kind is "selfDraw" or "panel"
+function MasterHUD:getFullscreenOwner()
+    for _, id in ipairs(self.selfDrawOrder) do
+        local s = self.selfDraws[id]
+        if s ~= nil and s.visible and claimsScreen(s) then return id, "selfDraw" end
+    end
+    for _, id in ipairs(self.panelOrder) do
+        local p = self.panels[id]
+        if p ~= nil and p.visible and claimsScreen(p) then return id, "panel" end
+    end
+    return nil, nil
+end
+
 function MasterHUD:draw()
     if self.hudsHidden then return end
+
+    -- While one element owns the screen, only that element draws. Text overlays
+    -- are skipped entirely rather than drawn and covered, because covering them
+    -- is exactly what does not work.
+    local ownerId, ownerKind = self:getFullscreenOwner()
+
+    if ownerId ~= nil then
+        if ownerKind == "selfDraw" then
+            local s = self.selfDraws[ownerId]
+            if s ~= nil then pcall(s.draw) end
+        else
+            local p = self.panels[ownerId]
+            if p ~= nil and (not p.adminOnly or self:isLocalAdmin()) then pcall(p.draw) end
+        end
+        return
+    end
+
     -- Text overlays: refresh dirty caches, group by anchor, stack by priority.
     local byAnchor = {
         ANCHOR_TOP_LEFT = {}, ANCHOR_TOP_RIGHT = {},
@@ -387,6 +458,11 @@ function MasterHUD:getStatus()
         #self.overlayOrder, #self.selfDrawOrder, #self.panelOrder,
         tostring(self.suspended), tostring(self.hudsHidden),
         tostring(self.layoutEditMode), #self.editListenerOrder))
+    -- Surfaced because "my HUD vanished" is the symptom of this working, and the
+    -- owner is the first thing to check when someone reports it.
+    local ownerId, ownerKind = self:getFullscreenOwner()
+    table.insert(lines, string.format("  fullscreen owner: %s%s",
+        ownerId or "none", ownerId and (" (" .. tostring(ownerKind) .. ")") or ""))
     for _, id in ipairs(self.overlayOrder) do
         local o = self.overlays[id]
         table.insert(lines, string.format("  overlay %s (anchor %s, visible %s)",
