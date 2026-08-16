@@ -191,14 +191,12 @@ function MasterHUD:setHudsHidden(hidden)
         pcall(self.onHudsHiddenChanged, hidden)
     end
     -- #region agent log
-    Logging.info("[MH-DEBUG][E] setHudsHidden hidden=%s listeners=%d", tostring(hidden), #(self.editListenerOrder or {}))
     -- #endregion
     MHLogger.info("Suite HUDs %s", hidden and "hidden" or "shown")
 end
 
 function MasterHUD:toggleHudsHidden()
     -- #region agent log
-    Logging.info("[MH-DEBUG][D] toggleHudsHidden invoked wasHidden=%s", tostring(self.hudsHidden == true))
     -- #endregion
     self:setHudsHidden(not self.hudsHidden)
 end
@@ -231,7 +229,6 @@ end
 
 function MasterHUD:toggleLayoutEditMode()
     -- #region agent log
-    Logging.info("[MH-DEBUG][D] toggleLayoutEditMode invoked wasEdit=%s", tostring(self.layoutEditMode == true))
     -- #endregion
     self:setLayoutEditMode(not self.layoutEditMode)
 end
