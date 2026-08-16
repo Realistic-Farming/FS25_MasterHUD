@@ -33,20 +33,12 @@ source(modDirectory .. "src/MasterHUD.lua")
 local masterHUD = MasterHUD.new()
 getfenv(0)["g_masterHUD"] = masterHUD
 
--- #region agent log
--- Debug session 3f9f36: suite HUD hide/edit key failure
--- FS25 sandbox: io.open append is forbidden ("only write mode 'w'"). Use Logging only.
-local function agentDbg(hypothesisId, location, message, data)
-    local parts = {}
-    if type(data) == "table" then
-        for k, v in pairs(data) do
-            table.insert(parts, string.format("%s=%s", tostring(k), tostring(v)))
-        end
-    end
-    Logging.info("[MH-DEBUG][%s] %s | %s | %s",
-        tostring(hypothesisId), tostring(location), tostring(message), table.concat(parts, ","))
-end
--- #endregion
+-- BUILD 17:45: the agentDbg helper and every call to it are gone. It was a labelled
+-- debug session (3f9f36) that outlived its investigation, and one of its call sites sat
+-- inside the vehicle-context hook, which the engine drives off
+-- InputBinding.endActionEventsModification. That fires constantly while the player is in a
+-- cab, so a single debug line there wrote somewhere between seven and twenty eight thousand
+-- lines into one client log.
 
 -- ---------------------------------------------------------
 -- Client-local hide preference
@@ -103,23 +95,11 @@ local vehicleEditEventId = nil
 
 local function onToggleAllHuds(_, _, inputValue)
     if (inputValue or 0) <= 0 then return end
-    -- #region agent log
-    agentDbg("D", "main.lua:onToggleAllHuds", "callback fired", {
-        inputValue = inputValue or 0,
-        wasHidden = masterHUD.hudsHidden == true,
-    })
-    -- #endregion
     masterHUD:toggleHudsHidden()
 end
 
 local function onEditHuds(_, _, inputValue)
     if (inputValue or 0) <= 0 then return end
-    -- #region agent log
-    agentDbg("D", "main.lua:onEditHuds", "callback fired", {
-        inputValue = inputValue or 0,
-        wasEdit = masterHUD.layoutEditMode == true,
-    })
-    -- #endregion
     masterHUD:toggleLayoutEditMode()
 end
 
@@ -127,12 +107,6 @@ local function registerInPlayerContext()
     if g_inputBinding == nil then return end
     if InputAction.MH_TOGGLE_ALL_HUDS == nil or InputAction.MH_EDIT_HUDS == nil then
         MHLogger.warning("InputAction MH_TOGGLE_ALL_HUDS / MH_EDIT_HUDS missing — check modDesc <actions>")
-        -- #region agent log
-        agentDbg("A", "main.lua:registerInPlayerContext", "InputAction missing", {
-            toggleNil = InputAction.MH_TOGGLE_ALL_HUDS == nil,
-            editNil = InputAction.MH_EDIT_HUDS == nil,
-        })
-        -- #endregion
         return
     end
     -- Already registered for this PLAYER context lifetime.
@@ -150,12 +124,6 @@ local function registerInPlayerContext()
             g_inputBinding:setActionEventActive(eventId, true)
             g_inputBinding:setActionEventTextVisibility(eventId, false)
         end
-        -- #region agent log
-        agentDbg("B", "main.lua:registerInPlayerContext", "toggle result", {
-            ok = ok == true,
-            id = tostring(eventId),
-        })
-        -- #endregion
         if not (ok and eventId) then
             MHLogger.warning("MH_TOGGLE_ALL_HUDS PLAYER registration failed (key conflict? rebind in Controls)")
         end
@@ -171,12 +139,6 @@ local function registerInPlayerContext()
             g_inputBinding:setActionEventActive(eventId, true)
             g_inputBinding:setActionEventTextVisibility(eventId, false)
         end
-        -- #region agent log
-        agentDbg("B", "main.lua:registerInPlayerContext", "edit result", {
-            ok = ok == true,
-            id = tostring(eventId),
-        })
-        -- #endregion
         if not (ok and eventId) then
             MHLogger.warning("MH_EDIT_HUDS PLAYER registration failed (key conflict? rebind in Controls)")
         end
@@ -187,6 +149,16 @@ end
 
 local function registerInVehicleContext(binding)
     if binding == nil or InputAction.MH_TOGGLE_ALL_HUDS == nil then return end
+
+    -- BUILD 17:45: this runs off endActionEventsModification, which the engine calls
+    -- constantly in a cab, and it used to remove and re-register four action events every
+    -- single time. When all four slots are already live there is nothing to repair, so the
+    -- whole teardown is skipped. If ANY of them is missing the full path still runs, because
+    -- a partial set is exactly the case the teardown exists for.
+    if vehicleToggleEventId ~= nil and vehicleEditEventId ~= nil
+        and playerToggleEventId ~= nil and playerEditEventId ~= nil then
+        return
+    end
 
     -- Drop stale vehicle (and player) slots — removeActionEvent can invalidate
     -- same-action PLAYER registrations (SoilFertilizer documented).
@@ -244,14 +216,6 @@ local function registerInVehicleContext(binding)
     end
     binding:endActionEventsModification()
 
-    -- #region agent log
-    agentDbg("C", "main.lua:registerInVehicleContext", "vehicle+player re-register", {
-        okVehicleToggle = okT == true,
-        okVehicleEdit = okE == true,
-        okPlayerToggle = pOkT == true,
-        okPlayerEdit = pOkE == true,
-    })
-    -- #endregion
 end
 
 -- Install player hook at module load (must wrap before first registerActionEvents).
@@ -261,23 +225,11 @@ do
         PlayerInputComponent.registerActionEvents = function(inputComponent, ...)
             origFn(inputComponent, ...)
             local isOwner = inputComponent.player ~= nil and inputComponent.player.isOwner
-            -- #region agent log
-            agentDbg("B", "main.lua:PlayerInputHook", "registerActionEvents fired", {
-                isOwner = isOwner == true,
-                hasPlayer = inputComponent.player ~= nil,
-            })
-            -- #endregion
             if isOwner then
                 registerInPlayerContext()
             end
         end
         MHLogger.info("PlayerInputComponent hook installed (suite hide/edit)")
-        -- #region agent log
-        agentDbg("B", "main.lua:moduleLoad", "player hook installed early", {
-            toggleAction = tostring(InputAction and InputAction.MH_TOGGLE_ALL_HUDS),
-            editAction = tostring(InputAction and InputAction.MH_EDIT_HUDS),
-        })
-        -- #endregion
     else
         MHLogger.warning("PlayerInputComponent.registerActionEvents unavailable — on-foot suite keys disabled")
     end
@@ -318,14 +270,6 @@ local function onMissionLoad(mission)
         mission.masterHUD = masterHUD
     end
     loadHidePreference()
-    -- #region agent log
-    agentDbg("A", "main.lua:onMissionLoad", "mission load", {
-        toggleAction = tostring(InputAction and InputAction.MH_TOGGLE_ALL_HUDS),
-        editAction = tostring(InputAction and InputAction.MH_EDIT_HUDS),
-        hudsHidden = masterHUD.hudsHidden == true,
-        isClient = mission ~= nil and mission.getIsClient ~= nil and mission:getIsClient() == true,
-    })
-    -- #endregion
     MHLogger.info("MasterHUD active (mod 3, UI renderer + suite hide/edit)")
 end
 
