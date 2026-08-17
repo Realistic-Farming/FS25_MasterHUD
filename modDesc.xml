@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="92">
     <author>TisonK</author>
-    <version>1.0.0.0</version>
+    <version>1.0.0.5</version>
     <modName>FS25_MasterHUD</modName>
 
     <title>
@@ -34,7 +34,7 @@
     </title>
 
     <description>
-        <en><![CDATA[Required library for the Realistic Farming mod ecosystem. Draws every companion mod's on-screen overlay from one shared render loop, so the mods do not each rebuild HUD text every frame. Lighter on performance and consistent on screen. No settings and nothing to configure. Install it and let it run.]]></en>
+        <en><![CDATA[Required library for the Realistic Farming mod ecosystem. Draws every companion mod's on-screen overlay from one shared render loop, so the mods do not each rebuild HUD text every frame. Lighter on performance and consistent on screen. Press # to hide or show all Realistic Farming overlays (vanilla HUD stays). Ctrl+# edits shared HUD layout. Install it and let it run.]]></en>
         <de><![CDATA[Erforderliche Bibliothek für das Realistic Farming Mod-Ökosystem. Zeichnet die Bildschirmanzeige jedes Begleitmods über eine gemeinsame Renderschleife, sodass nicht jeder Mod den HUD-Text in jedem Frame neu erstellt. Leichter für die Leistung. Keine Einstellungen.]]></de>
         <fr><![CDATA[Bibliothèque requise pour l'écosystème de mods Realistic Farming. Dessine l'affichage à l'écran de chaque mod compagnon depuis une seule boucle de rendu partagée, pour que les mods ne reconstruisent pas le texte du HUD à chaque image. Plus léger. Aucun réglage.]]></fr>
         <nl><![CDATA[Vereiste bibliotheek voor het Realistic Farming mod-ecosysteem. Tekent de schermweergave van elke bijbehorende mod vanuit één gedeelde renderlus, zodat de mods niet elke frame de HUD-tekst opnieuw opbouwen. Lichter voor de prestaties. Geen instellingen.]]></nl>
@@ -69,6 +69,81 @@
     <dependencies>
         <dependency>FS25_StateLedger</dependency>
     </dependencies>
+
+    <l10n>
+        <text name="input_MH_TOGGLE_ALL_HUDS">
+            <en><![CDATA[Hide / Show All Realistic Farming HUDs]]></en>
+            <de><![CDATA[Alle Realistic-Farming-HUDs aus-/einblenden]]></de>
+            <fr><![CDATA[Masquer / afficher tous les HUD Realistic Farming]]></fr>
+            <nl><![CDATA[Alle Realistic Farming-HUDs verbergen / tonen]]></nl>
+            <it><![CDATA[Nascondi / mostra tutti gli HUD Realistic Farming]]></it>
+            <pl><![CDATA[Ukryj / pokaż wszystkie HUD Realistic Farming]]></pl>
+            <es><![CDATA[Ocultar / mostrar todos los HUD de Realistic Farming]]></es>
+            <ea><![CDATA[Ocultar / mostrar todos los HUD de Realistic Farming]]></ea>
+            <pt><![CDATA[Ocultar / mostrar todos os HUD Realistic Farming]]></pt>
+            <br><![CDATA[Ocultar / mostrar todos os HUD Realistic Farming]]></br>
+            <ru><![CDATA[Скрыть / показать все HUD Realistic Farming]]></ru>
+            <uk><![CDATA[Сховати / показати всі HUD Realistic Farming]]></uk>
+            <cz><![CDATA[Skrýt / zobrazit všechny HUD Realistic Farming]]></cz>
+            <hu><![CDATA[Összes Realistic Farming HUD elrejtése / megjelenítése]]></hu>
+            <ro><![CDATA[Ascunde / arată toate HUD-urile Realistic Farming]]></ro>
+            <tr><![CDATA[Tüm Realistic Farming HUD'larını gizle / göster]]></tr>
+            <fi><![CDATA[Piilota / näytä kaikki Realistic Farming -HUD:t]]></fi>
+            <no><![CDATA[Skjul / vis alle Realistic Farming-HUD-er]]></no>
+            <sv><![CDATA[Dölj / visa alla Realistic Farming-HUD]]></sv>
+            <da><![CDATA[Skjul / vis alle Realistic Farming-HUD]]></da>
+            <kr><![CDATA[Realistic Farming HUD 전체 숨기기 / 표시]]></kr>
+            <jp><![CDATA[Realistic Farming HUDをすべて表示 / 非表示]]></jp>
+            <ct><![CDATA[隱藏 / 顯示所有 Realistic Farming HUD]]></ct>
+            <fc><![CDATA[隐藏 / 显示所有 Realistic Farming HUD]]></fc>
+            <id><![CDATA[Sembunyikan / tampilkan semua HUD Realistic Farming]]></id>
+            <vi><![CDATA[Ẩn / hiện tất cả HUD Realistic Farming]]></vi>
+        </text>
+        <text name="input_MH_EDIT_HUDS">
+            <en><![CDATA[Edit Realistic Farming HUD Layout]]></en>
+            <de><![CDATA[Realistic-Farming-HUD-Layout bearbeiten]]></de>
+            <fr><![CDATA[Modifier la disposition des HUD Realistic Farming]]></fr>
+            <nl><![CDATA[Realistic Farming-HUD-indeling bewerken]]></nl>
+            <it><![CDATA[Modifica layout HUD Realistic Farming]]></it>
+            <pl><![CDATA[Edytuj układ HUD Realistic Farming]]></pl>
+            <es><![CDATA[Editar disposición de HUD Realistic Farming]]></es>
+            <ea><![CDATA[Editar disposición de HUD Realistic Farming]]></ea>
+            <pt><![CDATA[Editar layout dos HUD Realistic Farming]]></pt>
+            <br><![CDATA[Editar layout dos HUD Realistic Farming]]></br>
+            <ru><![CDATA[Редактировать расположение HUD Realistic Farming]]></ru>
+            <uk><![CDATA[Редагувати розташування HUD Realistic Farming]]></uk>
+            <cz><![CDATA[Upravit rozložení HUD Realistic Farming]]></cz>
+            <hu><![CDATA[Realistic Farming HUD elrendezés szerkesztése]]></hu>
+            <ro><![CDATA[Editează aranjamentul HUD Realistic Farming]]></ro>
+            <tr><![CDATA[Realistic Farming HUD düzenini düzenle]]></tr>
+            <fi><![CDATA[Muokkaa Realistic Farming -HUD-asettelua]]></fi>
+            <no><![CDATA[Rediger Realistic Farming-HUD-oppsett]]></no>
+            <sv><![CDATA[Redigera Realistic Farming-HUD-layout]]></sv>
+            <da><![CDATA[Rediger Realistic Farming-HUD-layout]]></da>
+            <kr><![CDATA[Realistic Farming HUD 레이아웃 편집]]></kr>
+            <jp><![CDATA[Realistic Farming HUDレイアウトを編集]]></jp>
+            <ct><![CDATA[編輯 Realistic Farming HUD 版面]]></ct>
+            <fc><![CDATA[编辑 Realistic Farming HUD 布局]]></fc>
+            <id><![CDATA[Edit tata letak HUD Realistic Farming]]></id>
+            <vi><![CDATA[Chỉnh bố cục HUD Realistic Farming]]></vi>
+        </text>
+    </l10n>
+
+    <actions>
+        <action name="MH_TOGGLE_ALL_HUDS" category="ONFOOT VEHICLE" />
+        <action name="MH_EDIT_HUDS"       category="ONFOOT VEHICLE" />
+    </actions>
+
+    <inputBinding>
+        <!-- Free keys: KEY_backslash collides with TOGGLE_BULK_FILL + many companion
+             HUD toggles, which makes registerActionEvent return false. F10 is free. -->
+        <actionBinding action="MH_TOGGLE_ALL_HUDS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_f10" />
+        </actionBinding>
+        <actionBinding action="MH_EDIT_HUDS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_f10" />
+        </actionBinding>
+    </inputBinding>
 
     <extraSourceFiles>
         <sourceFile filename="main.lua" />
