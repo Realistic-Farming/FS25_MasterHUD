@@ -54,7 +54,33 @@ function MasterHUD.new()
     self.onHudsHiddenChanged = nil  -- optional persist callback set by main.lua
 
     self.renderer = OverlayRenderer.new()
+
+    -- BUILD 15:39 (PB-13 / PB-14). The suite's one non-blocking notice channel.
+    -- Companions post lines here instead of each calling showBlinkingWarning,
+    -- so cadence, folding and the queue-while-covered rule are decided once.
+    self.notices = MHNoticeQueue.new(self)
+
     return self
+end
+
+-- =========================================================
+-- Shared non-blocking notice channel
+-- =========================================================
+
+--- Post a player-facing line. Never modal, never a focus steal, paced to one
+--- line per in-game day per topic. See src/NoticeQueue.lua for the contract.
+---@param spec table { text, topic, title, foldable }
+---@return boolean accepted
+function MasterHUD:postNotice(spec)
+    if self.notices == nil then return false end
+    return self.notices:post(spec)
+end
+
+--- Per-frame tick for the notice channel. Called from the mission update hook.
+function MasterHUD:update(dt)
+    if self.notices ~= nil then
+        self.notices:update(dt)
+    end
 end
 
 -- =========================================================

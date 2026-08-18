@@ -28,6 +28,7 @@ local modName = g_currentModName
 
 source(modDirectory .. "src/Logger.lua")
 source(modDirectory .. "src/OverlayRenderer.lua")
+source(modDirectory .. "src/NoticeQueue.lua")
 source(modDirectory .. "src/MasterHUD.lua")
 
 local masterHUD = MasterHUD.new()
@@ -286,6 +287,13 @@ Mission00.load = Utils.appendedFunction(Mission00.load, onMissionLoad)
 -- Draw after the base game HUD so overlays sit on top.
 FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission)
     masterHUD:onDraw()
+end)
+
+-- BUILD 15:39 (PB-13 / PB-14). Ticks the shared notice channel: paces the one
+-- line per in-game-day window and holds everything back while a menu, dialog or
+-- fullscreen claim covers the world.
+FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
+    masterHUD:update(dt)
 end)
 
 -- Route mouse events to interactive panels (guarded: only if the hook exists).
