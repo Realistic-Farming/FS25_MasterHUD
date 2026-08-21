@@ -3,9 +3,11 @@
 -- =========================================================
 -- Author: TisonK
 -- =========================================================
--- Draws a text overlay (background panel + lines) with the FS25 Giants
--- rendering functions, using normalized 0-1 screen coordinates (origin
--- bottom-left). One shared background image is reused for every panel.
+-- Draws suite overlays with the same chrome primitives used by the base-game
+-- vehicle HUD: hudExtension top/middle/bottom panels and the three-part trailer
+-- fill-level progress bar. Coordinates are normalized 0-1 screen coordinates
+-- (origin bottom-left). The overlay objects are shared and repositioned for each
+-- panel/bar, just as the vanilla HUD extensions do.
 --
 -- API confirmed from the shipped SoilFertilizer HUD:
 --   createImageOverlay("dataS/menu/base/graph_pixel.dds")
@@ -27,6 +29,10 @@ OverlayRenderer.BG     = { 0, 0, 0 }
 function OverlayRenderer.new()
     local self = setmetatable({}, OverlayRenderer_mt)
     self.bgOverlay = nil
+    self.panelTop = nil
+    self.panelMiddle = nil
+    self.panelBottom = nil
+    self.progressBar = nil
     return self
 end
 
@@ -42,6 +48,168 @@ function OverlayRenderer:delete()
         delete(self.bgOverlay)
         self.bgOverlay = nil
     end
+    if self.panelTop ~= nil then
+        self.panelTop:delete()
+        self.panelTop = nil
+    end
+    if self.panelMiddle ~= nil then
+        self.panelMiddle:delete()
+        self.panelMiddle = nil
+    end
+    if self.panelBottom ~= nil then
+        self.panelBottom:delete()
+        self.panelBottom = nil
+    end
+    if self.progressBar ~= nil then
+        self.progressBar:delete()
+        self.progressBar = nil
+    end
+end
+
+-- Lazily create the exact three-piece background used by the base-game feed
+-- mixer, stationary baler and yarder HUD extensions. Lazy creation is important
+-- for live reload: constructor changes cannot reach an already-running instance.
+function OverlayRenderer:_ensureVanillaPanel()
+    if self.panelTop ~= nil and self.panelMiddle ~= nil and self.panelBottom ~= nil then
+        return true
+    end
+    if g_overlayManager == nil or g_overlayManager.createOverlay == nil then
+        return false
+    end
+
+    local top, middle, bottom
+    local ok = pcall(function()
+        top = g_overlayManager:createOverlay("gui.hudExtension_top", 0, 0, 0, 0)
+        middle = g_overlayManager:createOverlay("gui.hudExtension_middle", 0, 0, 0, 0)
+        bottom = g_overlayManager:createOverlay("gui.hudExtension_bottom", 0, 0, 0, 0)
+    end)
+    if not ok or top == nil or middle == nil or bottom == nil then
+        if top ~= nil then top:delete() end
+        if middle ~= nil then middle:delete() end
+        if bottom ~= nil then bottom:delete() end
+        return false
+    end
+
+    self.panelTop = top
+    self.panelMiddle = middle
+    self.panelBottom = bottom
+    return true
+end
+
+-- Render a base-game HUD-extension panel. x/y are the bottom-left corner.
+-- Returns true when native slices rendered, false so a standalone caller can
+-- retain its former graph_pixel fallback.
+function OverlayRenderer:renderPanel(x, y, width, height, alpha)
+    if width == nil or height == nil or width <= 0 or height <= 0 then
+        return false
+    end
+    if not self:_ensureVanillaPanel() then
+        return false
+    end
+
+    local uiScale = 1
+    if g_gameSettings ~= nil and g_gameSettings.getValue ~= nil
+    and GameSettings ~= nil and GameSettings.SETTING ~= nil then
+        uiScale = g_gameSettings:getValue(GameSettings.SETTING.UI_SCALE) or 1
+    end
+    local edgeHeight = 6 / 1080 * uiScale
+    if getNormalizedScreenValues ~= nil then
+        local _, normalizedHeight = getNormalizedScreenValues(0, 6 * uiScale)
+        edgeHeight = normalizedHeight or edgeHeight
+    end
+    edgeHeight = math.min(edgeHeight, height * 0.5)
+
+    local color = HUD ~= nil and HUD.COLOR ~= nil and HUD.COLOR.BACKGROUND
+               or { 0, 0, 0, 0.75 }
+    local panelAlpha = alpha
+    if panelAlpha == nil then panelAlpha = color[4] or 0.75 end
+
+    self.panelTop:setColor(color[1], color[2], color[3], panelAlpha)
+    self.panelMiddle:setColor(color[1], color[2], color[3], panelAlpha)
+    self.panelBottom:setColor(color[1], color[2], color[3], panelAlpha)
+
+    self.panelBottom:setDimension(width, edgeHeight)
+    self.panelBottom:setPosition(x, y)
+    self.panelMiddle:setDimension(width, math.max(0, height - edgeHeight * 2))
+    self.panelMiddle:setPosition(x, y + edgeHeight)
+    self.panelTop:setDimension(width, edgeHeight)
+    self.panelTop:setPosition(x, y + height - edgeHeight)
+
+    self.panelBottom:render()
+    self.panelMiddle:render()
+    self.panelTop:render()
+    return true
+end
+
+function OverlayRenderer:_ensureProgressBar()
+    if self.progressBar ~= nil then return true end
+    if ThreePartOverlay == nil or ThreePartOverlay.new == nil then return false end
+
+    local bar
+    local ok = pcall(function()
+        bar = ThreePartOverlay.new()
+        bar:setLeftPart("gui.progressbar_left", 0, 0)
+        bar:setMiddlePart("gui.progressbar_middle", 0, 0)
+        bar:setRightPart("gui.progressbar_right", 0, 0)
+    end)
+    if not ok or bar == nil or bar.leftPart == nil
+    or bar.middlePart == nil or bar.rightPart == nil then
+        if bar ~= nil and bar.delete ~= nil then bar:delete() end
+        return false
+    end
+    self.progressBar = bar
+    return true
+end
+
+local function setThreePartGeometry(bar, width, height, value)
+    local aspect = g_screenAspectRatio or (16 / 9)
+    local partWidth = math.min(width * 0.5, height / (2 * aspect))
+    local middleWidth = math.max(0, width - partWidth * 2)
+    bar:setLeftPart(nil, partWidth, height)
+    bar:setMiddlePart(nil, middleWidth * (value or 1), height)
+    bar:setRightPart(nil, partWidth, height)
+end
+
+-- Render the exact three-piece track/fill construction used by
+-- FillLevelsDisplay. ghostValue optionally draws a translucent projected value
+-- behind the solid value (Soil's application preview) without changing the
+-- native rounded silhouette.
+function OverlayRenderer:renderProgressBar(x, y, width, height, value, color, ghostValue, ghostColor)
+    if width == nil or height == nil or width <= 0 or height <= 0 then
+        return false
+    end
+    if not self:_ensureProgressBar() then return false end
+
+    value = math.max(0, math.min(1, value or 0))
+    ghostValue = math.max(value, math.min(1, ghostValue or value))
+
+    local bg = HUD ~= nil and HUD.COLOR ~= nil and HUD.COLOR.BACKGROUND_DARK
+            or { 0.08, 0.08, 0.08, 0.9 }
+    local active = HUD ~= nil and HUD.COLOR ~= nil and HUD.COLOR.ACTIVE
+                or { 0.33, 0.78, 0.05, 1 }
+    color = color or active
+    ghostColor = ghostColor or color
+
+    setThreePartGeometry(self.progressBar, width, height, 1)
+    self.progressBar:setColor(bg[1], bg[2], bg[3], bg[4] or 1)
+    self.progressBar:setPosition(x, y)
+    self.progressBar:render()
+
+    if ghostValue > value then
+        setThreePartGeometry(self.progressBar, width, height, ghostValue)
+        self.progressBar:setColor(ghostColor[1], ghostColor[2], ghostColor[3],
+            (ghostColor[4] or 1) * 0.35)
+        self.progressBar:setPosition(x, y)
+        self.progressBar:render()
+    end
+
+    if value > 0 then
+        setThreePartGeometry(self.progressBar, width, height, value)
+        self.progressBar:setColor(color[1], color[2], color[3], color[4] or 1)
+        self.progressBar:setPosition(x, y)
+        self.progressBar:render()
+    end
+    return true
 end
 
 -- Normalized text height for a config fontSize (treated as ~pixels at 1080p).
@@ -95,8 +263,10 @@ function OverlayRenderer:renderText(config, lines, stackOffset)
         top  = 1 - m - stackOffset
     end
 
-    -- Background panel (renderOverlay takes the bottom-left corner).
-    if self:_ensureBg() then
+    -- Background panel. Prefer the same three-piece chrome as base-game vehicle
+    -- HUD extensions; graph_pixel remains a defensive fallback only.
+    if not self:renderPanel(left, top - height, width, height, config.bgAlpha)
+    and self:_ensureBg() then
         local a = config.bgAlpha or 0.6
         setOverlayColor(self.bgOverlay, OverlayRenderer.BG[1], OverlayRenderer.BG[2], OverlayRenderer.BG[3], a)
         renderOverlay(self.bgOverlay, left, top - height, width, height)
