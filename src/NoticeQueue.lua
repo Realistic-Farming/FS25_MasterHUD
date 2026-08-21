@@ -28,7 +28,10 @@
 -- modal path in this file.
 -- =========================================================
 
-MHNoticeQueue = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+MHNoticeQueue = MHNoticeQueue or {}
 local MHNoticeQueue_mt = Class(MHNoticeQueue)
 
 -- How long a single notice holds the line before the next one is shown.
@@ -225,3 +228,15 @@ function MHNoticeQueue:getStatus()
 end
 
 getfenv(0)["MHNoticeQueue"] = MHNoticeQueue
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - the singleton's notice queue.
+if g_masterHUD ~= nil and g_masterHUD.notices ~= nil then
+    local inst = g_masterHUD.notices
+    for k, v in pairs(MHNoticeQueue) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
+end

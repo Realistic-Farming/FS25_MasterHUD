@@ -27,14 +27,17 @@
 -- so MasterHUD still owns ordering and suspend but does not lay them out.
 -- =========================================================
 
-MasterHUD = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+MasterHUD = MasterHUD or {}
 local MasterHUD_mt = Class(MasterHUD)
 
 local VALID_ANCHORS = {
     ANCHOR_TOP_LEFT = true, ANCHOR_TOP_RIGHT = true,
     ANCHOR_BOTTOM_LEFT = true, ANCHOR_BOTTOM_RIGHT = true,
-    -- BUILD 06:43 (Sam DESIGN 06:42): top-center glance stack at (0.50, 0.92),
-    -- draw down - the suite default, clear of every vanilla HUD corner.
+    -- BUILD 06:43 (Sam DESIGN 06:42): top-center glance stack at (0.50, 0.94 per
+    -- DESIGN 12:23), draw down - the suite default, clear of every vanilla HUD corner.
     ANCHOR_TOP_CENTER = true,
 }
 
@@ -521,4 +524,16 @@ end
 
 function MasterHUD:consoleCommandStatus()
     return self:getStatus()
+end
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - the singleton itself (also mission.masterHUD).
+if g_masterHUD ~= nil then
+    local inst = g_masterHUD
+    for k, v in pairs(MasterHUD) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
 end

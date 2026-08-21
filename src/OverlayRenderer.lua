@@ -14,7 +14,10 @@
 --   RenderText.ALIGN_LEFT / ALIGN_RIGHT ; delete(ov)
 -- =========================================================
 
-OverlayRenderer = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+OverlayRenderer = OverlayRenderer or {}
 local OverlayRenderer_mt = Class(OverlayRenderer)
 
 OverlayRenderer.MARGIN = 0.010    -- gap from the screen edge
@@ -81,12 +84,12 @@ function OverlayRenderer:renderText(config, lines, stackOffset)
         top  = m + stackOffset + height
     elseif anchor == "ANCHOR_TOP_CENTER" then
         -- BUILD 06:43 (Sam DESIGN 06:42): the suite glance stack's home is top-center,
-        -- x centered on 0.50 with the stack's top edge at y=0.92, drawing DOWN - clear
-        -- of every vanilla corner (status top-right, minimap bottom-left, speedometer
-        -- bottom-right). This is also the new DEFAULT anchor; a companion that
-        -- explicitly chose a corner keeps it.
+        -- x centered on 0.50 with the stack drawing DOWN - clear of every vanilla
+        -- corner (status top-right, minimap bottom-left, speedometer bottom-right).
+        -- This is also the DEFAULT anchor; a companion that explicitly chose a corner
+        -- keeps it. BUILD 12:25 (Sam DESIGN 12:23): top edge raised to y=0.94.
         left = 0.5 - width * 0.5
-        top  = 0.92 - stackOffset
+        top  = 0.94 - stackOffset
     else -- ANCHOR_TOP_RIGHT
         left = 1 - m - width
         top  = 1 - m - stackOffset
@@ -118,4 +121,16 @@ function OverlayRenderer:renderText(config, lines, stackOffset)
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return height + OverlayRenderer.GAP
+end
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - the singleton's renderer.
+if g_masterHUD ~= nil and g_masterHUD.renderer ~= nil then
+    local inst = g_masterHUD.renderer
+    for k, v in pairs(OverlayRenderer) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
 end
