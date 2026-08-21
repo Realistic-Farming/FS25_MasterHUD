@@ -64,7 +64,8 @@ function OverlayRenderer:renderText(config, lines, stackOffset)
     local pad   = config.padding or 0.005
     local width = config.width or 0.25
     local height = self:measure(config, #lines)
-    local anchor = config.anchor or "ANCHOR_TOP_RIGHT"
+    -- BUILD 06:43: default anchor is now the top-center glance stack (see below).
+    local anchor = config.anchor or "ANCHOR_TOP_CENTER"
 
     -- Panel left edge and top edge from the anchor.
     local left, top
@@ -78,7 +79,15 @@ function OverlayRenderer:renderText(config, lines, stackOffset)
     elseif anchor == "ANCHOR_BOTTOM_RIGHT" then
         left = 1 - m - width
         top  = m + stackOffset + height
-    else -- ANCHOR_TOP_RIGHT (default)
+    elseif anchor == "ANCHOR_TOP_CENTER" then
+        -- BUILD 06:43 (Sam DESIGN 06:42): the suite glance stack's home is top-center,
+        -- x centered on 0.50 with the stack's top edge at y=0.92, drawing DOWN - clear
+        -- of every vanilla corner (status top-right, minimap bottom-left, speedometer
+        -- bottom-right). This is also the new DEFAULT anchor; a companion that
+        -- explicitly chose a corner keeps it.
+        left = 0.5 - width * 0.5
+        top  = 0.92 - stackOffset
+    else -- ANCHOR_TOP_RIGHT
         left = 1 - m - width
         top  = 1 - m - stackOffset
     end

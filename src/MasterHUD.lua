@@ -33,6 +33,9 @@ local MasterHUD_mt = Class(MasterHUD)
 local VALID_ANCHORS = {
     ANCHOR_TOP_LEFT = true, ANCHOR_TOP_RIGHT = true,
     ANCHOR_BOTTOM_LEFT = true, ANCHOR_BOTTOM_RIGHT = true,
+    -- BUILD 06:43 (Sam DESIGN 06:42): top-center glance stack at (0.50, 0.92),
+    -- draw down - the suite default, clear of every vanilla HUD corner.
+    ANCHOR_TOP_CENTER = true,
 }
 
 function MasterHUD.new()
@@ -96,8 +99,8 @@ function MasterHUD:registerOverlay(id, config, fetchCallback)
     end
     config = config or {}
     if config.anchor ~= nil and not VALID_ANCHORS[config.anchor] then
-        MHLogger.warning("registerOverlay('%s'): unknown anchor '%s', using ANCHOR_TOP_RIGHT", id, tostring(config.anchor))
-        config.anchor = "ANCHOR_TOP_RIGHT"
+        MHLogger.warning("registerOverlay('%s'): unknown anchor '%s', using ANCHOR_TOP_CENTER", id, tostring(config.anchor))
+        config.anchor = "ANCHOR_TOP_CENTER"
     end
     if self.overlays[id] == nil then table.insert(self.overlayOrder, id) end
     self.overlays[id] = {
@@ -216,8 +219,22 @@ function MasterHUD:setHudsHidden(hidden)
     if type(self.onHudsHiddenChanged) == "function" then
         pcall(self.onHudsHiddenChanged, hidden)
     end
-    -- #region agent log
-    -- #endregion
+    -- BUILD 21:53 (Sam DESIGN 21:50 item 2): announce the scope change once, through
+    -- the immediate surface of the suite notice channel - the paced queue is blocked
+    -- by exactly the state this line confirms. Fires only on a real change (the
+    -- no-change early return above is Sam's silent no-op), lands on the vanilla
+    -- notification list, which stays visible while suite HUDs are hidden.
+    -- Sam's example line said "(incl. Moisture)"; that claim is deliberately NOT
+    -- made: the lower-right Moisture widget on the live baseline belongs to
+    -- FS25_MoistureSystem (author Ozz), a third-party mod this suite must neither
+    -- hide nor speak for. Flagged in the BUILD 21:53 DONE rather than decided silently.
+    if self.notices ~= nil and type(self.notices.postImmediate) == "function" then
+        self.notices:postImmediate({
+            title = "Realistic Farming",
+            text = hidden and "All Realistic Farming HUDs hidden"
+                           or "All Realistic Farming HUDs shown",
+        })
+    end
     MHLogger.info("Suite HUDs %s", hidden and "hidden" or "shown")
 end
 
@@ -381,6 +398,7 @@ function MasterHUD:draw()
     local byAnchor = {
         ANCHOR_TOP_LEFT = {}, ANCHOR_TOP_RIGHT = {},
         ANCHOR_BOTTOM_LEFT = {}, ANCHOR_BOTTOM_RIGHT = {},
+        ANCHOR_TOP_CENTER = {},
     }
     for _, id in ipairs(self.overlayOrder) do
         local o = self.overlays[id]
@@ -394,7 +412,7 @@ function MasterHUD:draw()
                     MHLogger.error("overlay '%s' fetch failed: %s (keeping last cache)", id, tostring(lines))
                 end
             end
-            local a = o.config.anchor or "ANCHOR_TOP_RIGHT"
+            local a = o.config.anchor or "ANCHOR_TOP_CENTER"
             table.insert(byAnchor[a], o)
         end
     end

@@ -197,6 +197,24 @@ function MHNoticeQueue:update(dt)
     surface(self.current)
 end
 
+--- BUILD 21:53 (Sam DESIGN 21:50 item 2): surface a line RIGHT NOW, skipping the
+--- queue, the per-day pacing and - decisively - the isBlocked gate. The suite
+--- hide/show confirmation is ABOUT the state isBlocked treats as blocked
+--- (hudsHidden), so the paced path would hold the "hidden" line until the player
+--- un-hides and then deliver it as a stale lie. The surface target is the game's
+--- own notification list, which is vanilla HUD and therefore visible while suite
+--- HUDs are hidden. Still non-modal, still auto-dismissing, still one line.
+--- For anything that is not a state-change confirmation, post() with its pacing
+--- remains the only correct channel - do not reach for this to skip the queue.
+---@param spec table { text, title }
+---@return boolean surfaced
+function MHNoticeQueue:postImmediate(spec)
+    if type(spec) ~= "table" or type(spec.text) ~= "string" or spec.text == "" then
+        return false
+    end
+    return surface({ topic = spec.text, title = spec.title, text = spec.text, folded = 0 })
+end
+
 function MHNoticeQueue:getStatus()
     return {
         queued  = #self.queue,
