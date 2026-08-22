@@ -270,7 +270,7 @@ function MasterHUD:setLayoutEditMode(enabled)
             end
         end
     end
-    MHLogger.info("Suite HUD layout edit %s (Ctrl+#)", enabled and "ON" or "OFF")
+    MHLogger.info("Suite HUD layout edit %s (MH_EDIT_HUDS)", enabled and "ON" or "OFF")
 end
 
 function MasterHUD:toggleLayoutEditMode()
