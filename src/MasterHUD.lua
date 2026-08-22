@@ -27,12 +27,18 @@
 -- so MasterHUD still owns ordering and suspend but does not lay them out.
 -- =========================================================
 
-MasterHUD = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+MasterHUD = MasterHUD or {}
 local MasterHUD_mt = Class(MasterHUD)
 
 local VALID_ANCHORS = {
     ANCHOR_TOP_LEFT = true, ANCHOR_TOP_RIGHT = true,
     ANCHOR_BOTTOM_LEFT = true, ANCHOR_BOTTOM_RIGHT = true,
+    -- BUILD 06:43 (Sam DESIGN 06:42): top-center glance stack at (0.50, 0.94 per
+    -- DESIGN 12:23), draw down - the suite default, clear of every vanilla HUD corner.
+    ANCHOR_TOP_CENTER = true,
 }
 
 function MasterHUD.new()
@@ -54,7 +60,33 @@ function MasterHUD.new()
     self.onHudsHiddenChanged = nil  -- optional persist callback set by main.lua
 
     self.renderer = OverlayRenderer.new()
+
+    -- BUILD 15:39 (PB-13 / PB-14). The suite's one non-blocking notice channel.
+    -- Companions post lines here instead of each calling showBlinkingWarning,
+    -- so cadence, folding and the queue-while-covered rule are decided once.
+    self.notices = MHNoticeQueue.new(self)
+
     return self
+end
+
+-- =========================================================
+-- Shared non-blocking notice channel
+-- =========================================================
+
+--- Post a player-facing line. Never modal, never a focus steal, paced to one
+--- line per in-game day per topic. See src/NoticeQueue.lua for the contract.
+---@param spec table { text, topic, title, foldable }
+---@return boolean accepted
+function MasterHUD:postNotice(spec)
+    if self.notices == nil then return false end
+    return self.notices:post(spec)
+end
+
+--- Per-frame tick for the notice channel. Called from the mission update hook.
+function MasterHUD:update(dt)
+    if self.notices ~= nil then
+        self.notices:update(dt)
+    end
 end
 
 -- =========================================================
@@ -70,8 +102,8 @@ function MasterHUD:registerOverlay(id, config, fetchCallback)
     end
     config = config or {}
     if config.anchor ~= nil and not VALID_ANCHORS[config.anchor] then
-        MHLogger.warning("registerOverlay('%s'): unknown anchor '%s', using ANCHOR_TOP_RIGHT", id, tostring(config.anchor))
-        config.anchor = "ANCHOR_TOP_RIGHT"
+        MHLogger.warning("registerOverlay('%s'): unknown anchor '%s', using ANCHOR_TOP_CENTER", id, tostring(config.anchor))
+        config.anchor = "ANCHOR_TOP_CENTER"
     end
     if self.overlays[id] == nil then table.insert(self.overlayOrder, id) end
     self.overlays[id] = {
@@ -190,8 +222,22 @@ function MasterHUD:setHudsHidden(hidden)
     if type(self.onHudsHiddenChanged) == "function" then
         pcall(self.onHudsHiddenChanged, hidden)
     end
-    -- #region agent log
-    -- #endregion
+    -- BUILD 21:53 (Sam DESIGN 21:50 item 2): announce the scope change once, through
+    -- the immediate surface of the suite notice channel - the paced queue is blocked
+    -- by exactly the state this line confirms. Fires only on a real change (the
+    -- no-change early return above is Sam's silent no-op), lands on the vanilla
+    -- notification list, which stays visible while suite HUDs are hidden.
+    -- Sam's example line said "(incl. Moisture)"; that claim is deliberately NOT
+    -- made: the lower-right Moisture widget on the live baseline belongs to
+    -- FS25_MoistureSystem (author Ozz), a third-party mod this suite must neither
+    -- hide nor speak for. Flagged in the BUILD 21:53 DONE rather than decided silently.
+    if self.notices ~= nil and type(self.notices.postImmediate) == "function" then
+        self.notices:postImmediate({
+            title = "Realistic Farming",
+            text = hidden and "All Realistic Farming HUDs hidden"
+                           or "All Realistic Farming HUDs shown",
+        })
+    end
     MHLogger.info("Suite HUDs %s", hidden and "hidden" or "shown")
 end
 
@@ -355,6 +401,7 @@ function MasterHUD:draw()
     local byAnchor = {
         ANCHOR_TOP_LEFT = {}, ANCHOR_TOP_RIGHT = {},
         ANCHOR_BOTTOM_LEFT = {}, ANCHOR_BOTTOM_RIGHT = {},
+        ANCHOR_TOP_CENTER = {},
     }
     for _, id in ipairs(self.overlayOrder) do
         local o = self.overlays[id]
@@ -368,7 +415,7 @@ function MasterHUD:draw()
                     MHLogger.error("overlay '%s' fetch failed: %s (keeping last cache)", id, tostring(lines))
                 end
             end
-            local a = o.config.anchor or "ANCHOR_TOP_RIGHT"
+            local a = o.config.anchor or "ANCHOR_TOP_CENTER"
             table.insert(byAnchor[a], o)
         end
     end
@@ -477,4 +524,16 @@ end
 
 function MasterHUD:consoleCommandStatus()
     return self:getStatus()
+end
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - the singleton itself (also mission.masterHUD).
+if g_masterHUD ~= nil then
+    local inst = g_masterHUD
+    for k, v in pairs(MasterHUD) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
 end

@@ -28,6 +28,7 @@ local modName = g_currentModName
 
 source(modDirectory .. "src/Logger.lua")
 source(modDirectory .. "src/OverlayRenderer.lua")
+source(modDirectory .. "src/NoticeQueue.lua")
 source(modDirectory .. "src/MasterHUD.lua")
 
 local masterHUD = MasterHUD.new()
@@ -122,7 +123,14 @@ local function registerInPlayerContext()
         if ok and eventId ~= nil then
             playerToggleEventId = eventId
             g_inputBinding:setActionEventActive(eventId, true)
-            g_inputBinding:setActionEventTextVisibility(eventId, false)
+            -- BUILD 21:53 (Sam DESIGN 21:50 item 1): the input-help legend is the one
+            -- surface that always shows the LIVE binding - the same source Controls
+            -- reads - so with the Function-key defaults gone these rows are visible
+            -- there instead of hidden. A player who has not bound the action sees the
+            -- engine's own unbound presentation plus the action name, which is the
+            -- honest state; nothing here paints a cleared default. All six visibility
+            -- flips in this file are this one decision.
+            g_inputBinding:setActionEventTextVisibility(eventId, true)
         end
         if not (ok and eventId) then
             MHLogger.warning("MH_TOGGLE_ALL_HUDS PLAYER registration failed (key conflict? rebind in Controls)")
@@ -137,7 +145,7 @@ local function registerInPlayerContext()
         if ok and eventId ~= nil then
             playerEditEventId = eventId
             g_inputBinding:setActionEventActive(eventId, true)
-            g_inputBinding:setActionEventTextVisibility(eventId, false)
+            g_inputBinding:setActionEventTextVisibility(eventId, true)
         end
         if not (ok and eventId) then
             MHLogger.warning("MH_EDIT_HUDS PLAYER registration failed (key conflict? rebind in Controls)")
@@ -182,7 +190,7 @@ local function registerInVehicleContext(binding)
     )
     if okT and idT then
         vehicleToggleEventId = idT
-        binding:setActionEventTextVisibility(idT, false)
+        binding:setActionEventTextVisibility(idT, true)
     end
 
     local okE, idE = binding:registerActionEvent(
@@ -191,7 +199,7 @@ local function registerInVehicleContext(binding)
     )
     if okE and idE then
         vehicleEditEventId = idE
-        binding:setActionEventTextVisibility(idE, false)
+        binding:setActionEventTextVisibility(idE, true)
     end
 
     binding:endActionEventsModification()
@@ -204,7 +212,7 @@ local function registerInVehicleContext(binding)
     )
     if pOkT and pIdT then
         playerToggleEventId = pIdT
-        binding:setActionEventTextVisibility(pIdT, false)
+        binding:setActionEventTextVisibility(pIdT, true)
     end
     local pOkE, pIdE = binding:registerActionEvent(
         InputAction.MH_EDIT_HUDS, masterHUD, onEditHuds,
@@ -212,7 +220,7 @@ local function registerInVehicleContext(binding)
     )
     if pOkE and pIdE then
         playerEditEventId = pIdE
-        binding:setActionEventTextVisibility(pIdE, false)
+        binding:setActionEventTextVisibility(pIdE, true)
     end
     binding:endActionEventsModification()
 
@@ -286,6 +294,13 @@ Mission00.load = Utils.appendedFunction(Mission00.load, onMissionLoad)
 -- Draw after the base game HUD so overlays sit on top.
 FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission)
     masterHUD:onDraw()
+end)
+
+-- BUILD 15:39 (PB-13 / PB-14). Ticks the shared notice channel: paces the one
+-- line per in-game-day window and holds everything back while a menu, dialog or
+-- fullscreen claim covers the world.
+FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
+    masterHUD:update(dt)
 end)
 
 -- Route mouse events to interactive panels (guarded: only if the hook exists).
