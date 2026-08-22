@@ -7,6 +7,13 @@ The UI renderer bedrock of the Realistic Farming mod ecosystem. MasterHUD is mod
 
 There are no settings and nothing to configure. Install it, keep it loaded, and let the companion mods use it.
 
+## Player controls
+
+| Key | Action |
+|-----|--------|
+| `Shift+H` | Hide / show every suite HUD at once (`MH_TOGGLE_ALL_HUDS`) |
+| *Edit HUD Layout* action | Toggle suite layout edit mode - every registered companion HUD outlines in orange and can be dragged with the mouse; exiting saves positions (`MH_EDIT_HUDS`, no default key - assign one under Options > Controls > Mods) |
+
 ## How companion mods use it
 
 Three registration paths, guarded against MasterHUD being absent:
