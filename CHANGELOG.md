@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to FS25_MasterHUD will be documented in this file.
 
@@ -15,6 +15,7 @@ the repo's git history and README.
 
 ### Added
 - Changelog file established (suite ruling 2026-08-22).
+- Control Center actions (suite Control Center, requires SettingsHub): MH_TOGGLE_ALL_HUDS, MH_EDIT_HUDS.
 
 ## [1.0.0.5] - 2026-08-22
 

@@ -262,6 +262,44 @@ end
 
 Mission00.load = Utils.appendedFunction(Mission00.load, onMissionLoad)
 
+-- ---------------------------------------------------------
+-- Realistic Farming Control Center: publish runnable delegates.
+--
+-- Registered from loadMission00Finished, not from onMissionLoad. MasterHUD is
+-- mod 3 and SettingsHub is mod 4, so the registry does not exist yet while this
+-- file loads, and SettingsHub only publishes it onto the mission handle during
+-- its own Mission00.load. Every Mission00.load hook has run by the time any
+-- loadMission00Finished hook does, so the handle is reliably there.
+--
+-- Reached through g_currentMission because that is the only channel that
+-- carries live between mod environments.
+-- ---------------------------------------------------------
+local function registerControlCenterActions()
+    local registry = g_currentMission ~= nil and g_currentMission.rfActionRegistry or nil
+    if registry == nil then return end
+
+    registry.registerAction({
+        action = "MH_TOGGLE_ALL_HUDS",
+        button = "Toggle",
+        order  = 1,
+        run    = function() masterHUD:toggleHudsHidden() end,
+    })
+
+    registry.registerAction({
+        action = "MH_EDIT_HUDS",
+        button = "Edit",
+        order  = 2,
+        -- Layout edit needs the world visible, so the Control Center steps aside.
+        closeFirst = true,
+        run        = function() masterHUD:toggleLayoutEditMode() end,
+    })
+
+    MHLogger.info("MasterHUD registered 2 Control Center actions")
+end
+
+Mission00.loadMission00Finished = Utils.appendedFunction(
+    Mission00.loadMission00Finished, registerControlCenterActions)
+
 -- Draw after the base game HUD so overlays sit on top.
 FSBaseMission.draw = Utils.appendedFunction(FSBaseMission.draw, function(mission)
     masterHUD:onDraw()
