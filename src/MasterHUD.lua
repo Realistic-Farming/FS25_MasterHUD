@@ -264,7 +264,13 @@ function MasterHUD:setLayoutEditMode(enabled)
     for _, id in ipairs(self.editListenerOrder) do
         local listener = self.editListeners[id]
         if listener ~= nil then
-            local fn = enabled and listener.enter or listener.exit
+            -- 2026-08-22: NOT "enabled and listener.enter or listener.exit". In Lua nil is
+            -- falsy, so for a listener that registered only an exit (enter == nil) that
+            -- idiom evaluates to listener.exit and fires EXIT while ENTERING edit mode.
+            -- All current suite bridges register both, so this was latent, but it is the
+            -- same trap that silently breaks any future exit-only listener.
+            local fn
+            if enabled then fn = listener.enter else fn = listener.exit end
             if type(fn) == "function" then
                 pcall(fn)
             end

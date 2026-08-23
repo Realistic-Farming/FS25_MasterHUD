@@ -15,6 +15,7 @@ the repo's git history and README.
 
 ### Added
 - Changelog file established (suite ruling 2026-08-22).
+- Playtest fixes: MH_TOGGLE_ALL_HUDS (RShift+G) and MH_EDIT_HUDS (RShift+B) chord defaults, in-cab vehicle input hook fix, exit-only listener idiom fix.
 - Control Center actions (suite Control Center, requires SettingsHub): MH_TOGGLE_ALL_HUDS, MH_EDIT_HUDS.
 
 ## [1.0.0.5] - 2026-08-22
