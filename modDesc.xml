@@ -131,7 +131,7 @@
 
     <actions>
         <action name="MH_TOGGLE_ALL_HUDS" category="ONFOOT VEHICLE" />
-        <action name="MH_EDIT_HUDS"       category="ONFOOT VEHICLE" />
+        <action name="MH_EDIT_HUDS" category="ONFOOT VEHICLE" />
     </actions>
 
     <inputBinding>
@@ -141,9 +141,10 @@
              suite toggle out of the box. MH_EDIT_HUDS stays deliberately unbound -
              the design named no default for it and none is invented. -->
         <actionBinding action="MH_TOGGLE_ALL_HUDS">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lshift KEY_h" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_g" />
         </actionBinding>
         <actionBinding action="MH_EDIT_HUDS">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_b" />
         </actionBinding>
     </inputBinding>
 
