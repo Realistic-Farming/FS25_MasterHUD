@@ -1,0 +1,25 @@
+﻿# Changelog
+
+All notable changes to FS25_MasterHUD will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Changelog tracking for this mod begins **2026-08-22** under the suite-wide ruling
+(see the ecosystem ledger, entry for Arissani and Wizard). Prior history lives in
+the repo's git history and README.
+
+---
+
+## [Unreleased]
+
+## [1.0.1.0] - 2026-08-26
+
+### Added
+- Changelog file established (suite ruling 2026-08-22).
+- Playtest fixes: MH_TOGGLE_ALL_HUDS (RShift+G) and MH_EDIT_HUDS (RShift+B) chord defaults, in-cab vehicle input hook fix, exit-only listener idiom fix.
+- Control Center actions (suite Control Center, requires SettingsHub): MH_TOGGLE_ALL_HUDS, MH_EDIT_HUDS.
+
+## [1.0.0.5] - 2026-08-22
+
+- First entry under changelog tracking.

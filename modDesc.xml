@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="92">
     <author>TisonK</author>
-    <version>1.0.0.5</version>
+    <version>1.0.1.0</version>
     <modName>FS25_MasterHUD</modName>
 
     <title>
@@ -131,17 +131,20 @@
 
     <actions>
         <action name="MH_TOGGLE_ALL_HUDS" category="ONFOOT VEHICLE" />
-        <action name="MH_EDIT_HUDS"       category="ONFOOT VEHICLE" />
+        <action name="MH_EDIT_HUDS" category="ONFOOT VEHICLE" />
     </actions>
 
     <inputBinding>
-        <!-- Free keys: KEY_backslash collides with TOGGLE_BULK_FILL + many companion
-             HUD toggles, which makes registerActionEvent return false. F10 is free. -->
+        <!-- BUILD 21:53 cleared the F10 / Ctrl+F10 defaults (Wizard Function-key ban).
+             BUILD 06:43 (Sam DESIGN 06:42 + George TASK 06:25): hide/show gets the
+             seat-locked non-Function default Shift+H so a fresh save has a working
+             suite toggle out of the box. MH_EDIT_HUDS stays deliberately unbound -
+             the design named no default for it and none is invented. -->
         <actionBinding action="MH_TOGGLE_ALL_HUDS">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_f10" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_g" />
         </actionBinding>
         <actionBinding action="MH_EDIT_HUDS">
-            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_f10" />
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_rshift KEY_b" />
         </actionBinding>
     </inputBinding>
 

@@ -6,7 +6,7 @@
 -- Mod-prefixed logging so lines are greppable by "[MasterHUD]".
 -- =========================================================
 
-MHLogger = {}
+MHLogger = MHLogger or {}
 MHLogger.PREFIX = "[MasterHUD] "
 MHLogger.debugEnabled = false
 
