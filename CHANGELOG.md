@@ -13,6 +13,8 @@ the repo's git history and README.
 
 ## [Unreleased]
 
+## [1.0.1.0] - 2026-08-26
+
 ### Added
 - Changelog file established (suite ruling 2026-08-22).
 - Playtest fixes: MH_TOGGLE_ALL_HUDS (RShift+G) and MH_EDIT_HUDS (RShift+B) chord defaults, in-cab vehicle input hook fix, exit-only listener idiom fix.
