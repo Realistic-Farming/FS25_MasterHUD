@@ -132,6 +132,12 @@ function MasterHUD:subscribe(id, spec)
         draw = spec.draw,
         isDirty = spec.isDirty,
         isFullscreen = spec.isFullscreen,
+        -- [MH-HH] Survives suite hide-all (RShift+G). In-cab TOOL readouts
+        -- (sprayer rate, VRA, sensors) must stay useful while spraying: the
+        -- player asked to hide glance chrome, not to fly blind. Flagged
+        -- entries keep drawing when hudsHidden. Name is the BUILD 22:36
+        -- lock, exact.
+        visibleWhenHudsHidden = spec.visibleWhenHudsHidden == true,
         visible = true,
     }
     MHLogger.debug("Subscribed self-draw '%s'", id)
@@ -155,6 +161,8 @@ function MasterHUD:registerPanel(id, spec)
         -- as a function. A plain boolean behaves exactly as it did before.
         isFullscreen = spec.isFullscreen,
         adminOnly = spec.adminOnly == true,
+        -- [MH-HH] see subscribe(): flagged panels keep drawing on hide-all.
+        visibleWhenHudsHidden = spec.visibleWhenHudsHidden == true,
         visible = true,
     }
     MHLogger.debug("Registered panel '%s'", id)
@@ -340,9 +348,33 @@ function MasterHUD:onDraw()
     -- Suspend while any menu or dialog is up (proven guard from SoilFertilizer).
     self.suspended = g_gui ~= nil and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible())
     if self.suspended then return end
-    -- Suite hide: skip every RF overlay/self-draw/panel. Vanilla HUD is untouched.
-    if self.hudsHidden then return end
+    -- Suite hide: glance chrome goes, but [MH-HH] flagged in-cab tool readouts
+    -- keep drawing - hiding "HUDs" must not blind the player mid-spray.
+    if self.hudsHidden then
+        self:drawHudsHiddenKeeps()
+        return
+    end
     self:draw()
+end
+
+--- [MH-HH] Restricted pass for hide-all: only entries that registered with
+--- visibleWhenHudsHidden = true draw. Text overlays never survive hide-all
+--- (they are glance chrome by definition), and fullscreen ownership is not
+--- honoured here - a fullscreen surface is exactly what hide-all removes.
+function MasterHUD:drawHudsHiddenKeeps()
+    for _, id in ipairs(self.selfDrawOrder) do
+        local s = self.selfDraws[id]
+        if s ~= nil and s.visible and s.visibleWhenHudsHidden then
+            pcall(s.draw)
+        end
+    end
+    for _, id in ipairs(self.panelOrder) do
+        local p = self.panels[id]
+        if p ~= nil and p.visible and p.visibleWhenHudsHidden
+            and (not p.adminOnly or self:isLocalAdmin()) then
+            pcall(p.draw)
+        end
+    end
 end
 
 -- Does this entry currently claim the whole screen? `true` means always, a
@@ -457,10 +489,14 @@ end
 -- =========================================================
 
 function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
-    if self.suspended or self.hudsHidden then return end
+    if self.suspended then return end
     for _, id in ipairs(self.panelOrder) do
         local p = self.panels[id]
+        -- [MH-HH] While hudsHidden, only the flagged keep-alive panels take
+        -- mouse input - a visible tool panel that ignored clicks would be
+        -- "visible but not useful", which is the exact complaint.
         if p ~= nil and p.visible and type(p.onMouse) == "function"
+            and (not self.hudsHidden or p.visibleWhenHudsHidden)
             and (not p.adminOnly or self:isLocalAdmin()) then
             local ok, handled = pcall(p.onMouse, posX, posY, isDown, isUp, button)
             if ok and handled then return end
