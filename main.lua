@@ -37,6 +37,7 @@ source(modDirectory .. "src/Logger.lua")
 source(modDirectory .. "src/OverlayRenderer.lua")
 source(modDirectory .. "src/NoticeQueue.lua")
 source(modDirectory .. "src/MasterHUD.lua")
+source(modDirectory .. "src/MhContextInput.lua")
 
 local masterHUD = MasterHUD.new()
 getfenv(0)["g_masterHUD"] = masterHUD
@@ -85,160 +86,97 @@ end
 masterHUD.onHudsHiddenChanged = saveHidePreference
 
 -- ---------------------------------------------------------
--- Input: suite hide + shared layout edit
+-- Input: suite hide + shared layout edit (RSF-F201 context-qualified)
 -- Proven FS25 pattern (Soil / FuelCosts / RWE):
 --   1. Wrap PlayerInputComponent.registerActionEvents at MODULE LOAD.
 --   2. Vehicle: hook InputBinding.endActionEventsModification
---      (Vehicle.registerActionEvents is copied onto instances at spawn —
+--      (Vehicle.registerActionEvents is copied onto instances at spawn,
 --      class patches after that are silently ignored).
 --   3. Callbacks ignore zero inputValue (key-up).
---   4. Defaults must be free keys — KEY_backslash collides with
+--   4. Defaults must be free keys: KEY_backslash collides with
 --      TOGGLE_BULK_FILL and many companion HUD toggles (register fails).
+--
+-- RSF-F201: each context registers through its own private forwarding target.
+-- The engine keys an event by action, target and trigger shape only, so the
+-- old shared `masterHUD` target made the PLAYER and VEHICLE registrations one
+-- global slot that every cab rebuild wiped (the comment that used to sit on
+-- the vehicle path records exactly that dead-cab-key shape). Membership is
+-- now asked of the wrap's own context by walking the native lists; a complete
+-- set means no transaction, so the constant VEHICLE closes while seated cost
+-- nothing. The hook record lives on the MasterHUD class table (reused on hot
+-- reload, see src/MasterHUD.lua:30-33) and is never restored per mission.
 -- ---------------------------------------------------------
 
-local playerToggleEventId = nil
-local playerEditEventId = nil
-local vehicleToggleEventId = nil
-local vehicleEditEventId = nil
+local inputRecord = MhContextInput.record(MasterHUD, "_f201Input")
 
-local function onToggleAllHuds(_, _, inputValue)
+-- Handlers resolved by name on the live owner at call time. Engine signature:
+-- (target, actionName, inputValue, ...). Zero inputValue is key-up.
+function MasterHUD:onToggleAllHudsInput(_, inputValue)
     if (inputValue or 0) <= 0 then return end
-    masterHUD:toggleHudsHidden()
+    self:toggleHudsHidden()
 end
 
-local function onEditHuds(_, _, inputValue)
+function MasterHUD:onEditHudsInput(_, inputValue)
     if (inputValue or 0) <= 0 then return end
-    masterHUD:toggleLayoutEditMode()
+    self:toggleLayoutEditMode()
 end
 
-local function registerInPlayerContext()
-    if g_inputBinding == nil then return end
-    if InputAction.MH_TOGGLE_ALL_HUDS == nil or InputAction.MH_EDIT_HUDS == nil then
-        MHLogger.warning("InputAction MH_TOGGLE_ALL_HUDS / MH_EDIT_HUDS missing — check modDesc <actions>")
-        return
-    end
-    -- No stale-id early-return: the hook fires on player spawn, when the PLAYER
-    -- context may have been rebuilt and any saved ids are dead. Registering into
-    -- a context that already holds the action fails silently, so attempting on
-    -- every spawn is safe (same rationale as the vehicle path).
-    g_inputBinding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
-
-    do
-        local ok, eventId = g_inputBinding:registerActionEvent(
-            InputAction.MH_TOGGLE_ALL_HUDS, masterHUD, onToggleAllHuds,
-            false, true, false, true
-        )
-        if ok and eventId ~= nil then
-            playerToggleEventId = eventId
-            g_inputBinding:setActionEventActive(eventId, true)
-            -- BUILD 21:53 (Sam DESIGN 21:50 item 1): the input-help legend is the one
-            -- surface that always shows the LIVE binding - the same source Controls
-            -- reads - so with the Function-key defaults gone these rows are visible
-            -- there instead of hidden. A player who has not bound the action sees the
-            -- engine's own unbound presentation plus the action name, which is the
-            -- honest state; nothing here paints a cleared default. All six visibility
-            -- flips in this file are this one decision.
-            g_inputBinding:setActionEventTextVisibility(eventId, true)
-        end
-    end
-
-    do
-        local ok, eventId = g_inputBinding:registerActionEvent(
-            InputAction.MH_EDIT_HUDS, masterHUD, onEditHuds,
-            false, true, false, true
-        )
-        if ok and eventId ~= nil then
-            playerEditEventId = eventId
-            g_inputBinding:setActionEventActive(eventId, true)
-            g_inputBinding:setActionEventTextVisibility(eventId, true)
-        end
-        -- No failure warning here: with the stale-id guard gone this runs on
-        -- every spawn, and an attempt against a context that already holds the
-        -- action fails by design.
-    end
-
-    g_inputBinding:endActionEventsModification()
+-- BUILD 21:53 (Sam DESIGN 21:50 item 1): the input-help legend is the one
+-- surface that always shows the LIVE binding, the same source Controls
+-- reads, so with the Function-key defaults gone these rows are visible
+-- there instead of hidden. A player who has not bound the action sees the
+-- engine's own unbound presentation plus the action name, which is the
+-- honest state; nothing here paints a cleared default.
+local function showLegendRow(binding, eventId)
+    binding:setActionEventActive(eventId, true)
+    binding:setActionEventTextVisibility(eventId, true)
 end
 
-local function registerInVehicleContext(binding)
-    if binding == nil or InputAction.MH_TOGGLE_ALL_HUDS == nil then return end
-
-    -- FuelCosts proven shape (live log: fires once per vehicle entry, no spam):
-    -- register into the vehicle context every time the engine rebuilds it, with
-    -- no teardown and no touching of the PLAYER slots. The old shape here
-    -- early-returned once its saved ids were non-nil, so every vehicle context
-    -- after the first was rebuilt WITHOUT these events (ids go stale when a
-    -- context is destroyed, but the guard only checked non-nil) - that is the
-    -- exact "keys dead in the cab" Wizard hit. A re-register into a context
-    -- that already has the action simply fails and stays silent, so calling
-    -- this on every VEHICLE endActionEventsModification is safe.
-    binding:beginActionEventsModification(Vehicle.INPUT_CONTEXT_NAME)
-
-    local okT, idT = binding:registerActionEvent(
-        InputAction.MH_TOGGLE_ALL_HUDS, masterHUD, onToggleAllHuds,
-        false, true, false, true
-    )
-    if okT and idT then
-        vehicleToggleEventId = idT
-        binding:setActionEventTextVisibility(idT, true)
-        MHLogger.info("MH_TOGGLE_ALL_HUDS registered in VEHICLE context")
-    end
-
-    local okE, idE = binding:registerActionEvent(
-        InputAction.MH_EDIT_HUDS, masterHUD, onEditHuds,
-        false, true, false, true
-    )
-    if okE and idE then
-        vehicleEditEventId = idE
-        binding:setActionEventTextVisibility(idE, true)
-        MHLogger.info("MH_EDIT_HUDS registered in VEHICLE context")
-    end
-
-    binding:endActionEventsModification()
+local function showCabRow(binding, eventId)
+    binding:setActionEventTextVisibility(eventId, true)
 end
 
--- Install player hook at module load (must wrap before first registerActionEvents).
+local MH_PLAYER_SPECS = {
+    { action = "MH_TOGGLE_ALL_HUDS", handler = "onToggleAllHudsInput", idField = "playerToggleEventId",
+      up = false, down = true, always = false, startActive = true, after = showLegendRow },
+    { action = "MH_EDIT_HUDS", handler = "onEditHudsInput", idField = "playerEditEventId",
+      up = false, down = true, always = false, startActive = true, after = showLegendRow },
+}
+
+local MH_VEHICLE_SPECS = {
+    { action = "MH_TOGGLE_ALL_HUDS", handler = "onToggleAllHudsInput", idField = "vehicleToggleEventId",
+      up = false, down = true, always = false, startActive = true, after = showCabRow },
+    { action = "MH_EDIT_HUDS", handler = "onEditHudsInput", idField = "vehicleEditEventId",
+      up = false, down = true, always = false, startActive = true, after = showCabRow },
+}
+
+-- Install both wrappers at module load (must wrap before first registerActionEvents).
+-- Installed once per loaded script environment; the record on the class table
+-- makes a re-sourced copy adopt the existing wrappers instead of stacking.
 do
-    if PlayerInputComponent ~= nil and PlayerInputComponent.registerActionEvents ~= nil then
-        local origFn = PlayerInputComponent.registerActionEvents
-        PlayerInputComponent.registerActionEvents = function(inputComponent, ...)
-            origFn(inputComponent, ...)
-            local isOwner = inputComponent.player ~= nil and inputComponent.player.isOwner
-            if isOwner then
-                registerInPlayerContext()
-            end
-        end
+    if InputAction == nil or InputAction.MH_TOGGLE_ALL_HUDS == nil or InputAction.MH_EDIT_HUDS == nil then
+        MHLogger.warning("InputAction MH_TOGGLE_ALL_HUDS / MH_EDIT_HUDS missing - check modDesc <actions>")
+    end
+    if MhContextInput.installPlayerWrapper(inputRecord, MH_PLAYER_SPECS) then
         MHLogger.info("PlayerInputComponent hook installed (suite hide/edit)")
     else
-        MHLogger.warning("PlayerInputComponent.registerActionEvents unavailable — on-foot suite keys disabled")
+        MHLogger.warning("PlayerInputComponent.registerActionEvents unavailable - on-foot suite keys disabled")
     end
-end
-
--- Vehicle context via InputBinding.endActionEventsModification (Soil/Fuel/RWE).
-do
-    if InputBinding ~= nil and InputBinding.endActionEventsModification ~= nil then
-        local hookActive = false
-        local origEnd = InputBinding.endActionEventsModification
-        InputBinding.endActionEventsModification = function(binding, ignoreCheck)
-            local contextName = ""
-            if binding.registrationContext ~= nil
-                and binding.registrationContext ~= InputBinding.NO_REGISTRATION_CONTEXT then
-                contextName = binding.registrationContext.name or ""
-            end
-
-            origEnd(binding, ignoreCheck)
-
-            if Vehicle == nil or contextName ~= Vehicle.INPUT_CONTEXT_NAME then return end
-            if hookActive then return end
-            hookActive = true
-            registerInVehicleContext(binding)
-            hookActive = false
-        end
+    if MhContextInput.installVehicleWrapper(inputRecord, MH_VEHICLE_SPECS) then
         MHLogger.info("InputBinding VEHICLE hook installed (suite hide/edit)")
     else
-        MHLogger.warning("InputBinding.endActionEventsModification unavailable — in-vehicle suite keys disabled")
+        MHLogger.warning("InputBinding.endActionEventsModification unavailable - in-vehicle suite keys disabled")
     end
 end
+
+local function activateInput(mission)
+    if PlayerInputComponent == nil or Vehicle == nil then return end
+    MhContextInput.activate(inputRecord, masterHUD, mission, {
+        [PlayerInputComponent.INPUT_CONTEXT_NAME] = MH_PLAYER_SPECS,
+        [Vehicle.INPUT_CONTEXT_NAME]              = MH_VEHICLE_SPECS,
+    })
+end
+
 
 -- ---------------------------------------------------------
 -- Mission lifecycle
@@ -248,11 +186,19 @@ local function onMissionLoad(mission)
     if mission ~= nil then
         mission.masterHUD = masterHUD
     end
+    -- RSF-F201: bind the surviving instance as input owner of this mission and
+    -- mint fresh per-context forwarding targets. Wrappers are not reinstalled.
+    activateInput(mission)
     loadHidePreference()
     MHLogger.info("MasterHUD active (mod 3, UI renderer + suite hide/edit)")
 end
 
 local function onMissionDelete()
+    -- RSF-F201: retire the input owner first. Old targets go inert; the captured
+    -- predecessors stay installed so no neighbour's wrapper is unhooked.
+    MhContextInput.retire(inputRecord)
+    masterHUD.playerToggleEventId, masterHUD.playerEditEventId = nil, nil
+    masterHUD.vehicleToggleEventId, masterHUD.vehicleEditEventId = nil, nil
     masterHUD:delete()
     getfenv(0)["g_masterHUD"] = nil
     if g_currentMission ~= nil then
@@ -275,6 +221,11 @@ Mission00.load = Utils.appendedFunction(Mission00.load, onMissionLoad)
 -- carries live between mod environments.
 -- ---------------------------------------------------------
 local function registerControlCenterActions()
+    -- RSF-F201 post-load catch-up, independent of the optional registry below:
+    -- one PLAYER reconciliation if the local owning player and the native
+    -- PLAYER context already exist. No-op when the set is complete.
+    MhContextInput.catchUpPlayer(inputRecord, MH_PLAYER_SPECS)
+
     local registry = g_currentMission ~= nil and g_currentMission.rfActionRegistry or nil
     if registry == nil then return end
 
@@ -309,6 +260,8 @@ end)
 -- line per in-game-day window and holds everything back while a menu, dialog or
 -- fullscreen claim covers the world.
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
+    -- RSF-F201: admission reset is the first input act of every update interval.
+    MhContextInput.resetAdmission(inputRecord)
     masterHUD:update(dt)
 end)
 
