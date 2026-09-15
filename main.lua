@@ -197,6 +197,8 @@ local function onMissionDelete()
     -- RSF-F201: retire the input owner first. Old targets go inert; the captured
     -- predecessors stay installed so no neighbour's wrapper is unhooked.
     MhContextInput.retire(inputRecord)
+    masterHUD.playerToggleEventId, masterHUD.playerEditEventId = nil, nil
+    masterHUD.vehicleToggleEventId, masterHUD.vehicleEditEventId = nil, nil
     masterHUD:delete()
     getfenv(0)["g_masterHUD"] = nil
     if g_currentMission ~= nil then
