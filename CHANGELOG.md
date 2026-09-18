@@ -13,6 +13,11 @@ the repo's git history and README.
 
 ## [Unreleased]
 
+## [1.1.0.0] - 2026-09-18
+
+### Added
+- Hide-all now has a restricted keep-drawing pass: `subscribe`/`registerPanel` accept an opt-in `visibleWhenHudsHidden` spec field, and flagged self-draws or panels keep rendering while every other overlay is hidden. In-cab tool readouts (sprayer rate, VRA, sensors) stay visible across the suite's Hide All HUDs toggle instead of disappearing with the glance chrome.
+
 ### Fixed
 - RSF-F201: cab and on-foot controls stay valid across vehicle entry and exit. Each input context now registers through its own private target, so the PLAYER and VEHICLE registrations no longer share one engine identifier that a cab rebuild wiped. Membership is checked in the wrap's own context, a complete set costs no registration work, and the input wrappers install once per session instead of being restored on every mission teardown.
 
