@@ -548,6 +548,15 @@ function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
     end
 end
 
+--- [MH-HH / 118] The third half, and it has to agree with the other two.
+--- This used to return early whenever hudsHidden, so nothing received keys at all.
+--- It now mirrors onMouseEvent exactly: the drawn fullscreen panel owner receives
+--- keys, a selfDraw owner leaves MasterHUD key dispatch idle because that companion
+--- routes its own input, and with no owner the keep-alive panels receive keys.
+--- That last case is NEW input routing. It is inert in the fleet today, because the
+--- only visibleWhenHudsHidden subscriber is SoilFertilizer's selfDraw
+--- (SoilMasterHUDBridge.lua:191) and not a panel, but it is the contract any future
+--- keep panel will get, so it is written down here rather than left implied.
 function MasterHUD:onKeyEvent(action, value)
     if self.suspended then return end
 

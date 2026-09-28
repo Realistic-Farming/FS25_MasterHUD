@@ -1,6 +1,8 @@
 -- Hide-all draw + input must agree on the fullscreen owner.
 -- selfDraw owners (Soil settings via drawStack) are drawn by MasterHUD but
 -- get mouse/keys from the companion's own listener, not from panelOrder.
+--
+--!load: src/Logger.lua, src/OverlayRenderer.lua, src/NoticeQueue.lua, src/MasterHUD.lua
 
 local function counter()
   local c = { n = 0 }
