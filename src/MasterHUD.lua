@@ -357,11 +357,30 @@ function MasterHUD:onDraw()
     self:draw()
 end
 
---- [MH-HH] Restricted pass for hide-all: only entries that registered with
---- visibleWhenHudsHidden = true draw. Text overlays never survive hide-all
---- (they are glance chrome by definition), and fullscreen ownership is not
---- honoured here - a fullscreen surface is exactly what hide-all removes.
+--- [MH-HH] Restricted pass for hide-all.
+--- Passive glance chrome still dies. Two survivors:
+---   1. Entries registered with visibleWhenHudsHidden (in-cab tool readouts).
+---   2. The current fullscreen owner (an explicitly opened interactive settings
+---      / tuning surface). Hide-all must not close or blank a menu the player
+---      already opened; drawStack paths that stand their own HUD down while
+---      isFullscreen then keep drawing only that menu, not the minimap.
+--- When a fullscreen owner is present it alone draws (same exclusivity as the
+--- normal draw path). Cab-tool keeps resume once the menu closes.
 function MasterHUD:drawHudsHiddenKeeps()
+    local ownerId, ownerKind = self:getFullscreenOwner()
+    if ownerId ~= nil then
+        if ownerKind == "selfDraw" then
+            local s = self.selfDraws[ownerId]
+            if s ~= nil and s.visible then pcall(s.draw) end
+        else
+            local p = self.panels[ownerId]
+            if p ~= nil and p.visible and (not p.adminOnly or self:isLocalAdmin()) then
+                pcall(p.draw)
+            end
+        end
+        return
+    end
+
     for _, id in ipairs(self.selfDrawOrder) do
         local s = self.selfDraws[id]
         if s ~= nil and s.visible and s.visibleWhenHudsHidden then
@@ -490,13 +509,38 @@ end
 
 function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
     if self.suspended then return end
+
+    -- [MH-HH / 118] Hidden input must match drawHudsHiddenKeeps. Only the
+    -- drawn fullscreen panel owner receives MasterHUD mouse; a selfDraw owner
+    -- (e.g. SoilFertilizer_HUD) leaves MasterHUD panel dispatch idle because
+    -- that companion routes input itself. With no owner, keep-alive panels only.
+    if self.hudsHidden then
+        local ownerId, ownerKind = self:getFullscreenOwner()
+        if ownerId ~= nil then
+            if ownerKind == "panel" then
+                local p = self.panels[ownerId]
+                if p ~= nil and p.visible and type(p.onMouse) == "function"
+                    and (not p.adminOnly or self:isLocalAdmin()) then
+                    pcall(p.onMouse, posX, posY, isDown, isUp, button)
+                end
+            end
+            return
+        end
+        for _, id in ipairs(self.panelOrder) do
+            local p = self.panels[id]
+            if p ~= nil and p.visible and type(p.onMouse) == "function"
+                and p.visibleWhenHudsHidden
+                and (not p.adminOnly or self:isLocalAdmin()) then
+                local ok, handled = pcall(p.onMouse, posX, posY, isDown, isUp, button)
+                if ok and handled then return end
+            end
+        end
+        return
+    end
+
     for _, id in ipairs(self.panelOrder) do
         local p = self.panels[id]
-        -- [MH-HH] While hudsHidden, only the flagged keep-alive panels take
-        -- mouse input - a visible tool panel that ignored clicks would be
-        -- "visible but not useful", which is the exact complaint.
         if p ~= nil and p.visible and type(p.onMouse) == "function"
-            and (not self.hudsHidden or p.visibleWhenHudsHidden)
             and (not p.adminOnly or self:isLocalAdmin()) then
             local ok, handled = pcall(p.onMouse, posX, posY, isDown, isUp, button)
             if ok and handled then return end
@@ -504,8 +548,42 @@ function MasterHUD:onMouseEvent(posX, posY, isDown, isUp, button)
     end
 end
 
+--- [MH-HH / 118] The third half, and it has to agree with the other two.
+--- This used to return early whenever hudsHidden, so nothing received keys at all.
+--- It now mirrors onMouseEvent exactly: the drawn fullscreen panel owner receives
+--- keys, a selfDraw owner leaves MasterHUD key dispatch idle because that companion
+--- routes its own input, and with no owner the keep-alive panels receive keys.
+--- That last case is NEW input routing. It is inert in the fleet today, because the
+--- only visibleWhenHudsHidden subscriber is SoilFertilizer's selfDraw
+--- (SoilMasterHUDBridge.lua:191) and not a panel, but it is the contract any future
+--- keep panel will get, so it is written down here rather than left implied.
 function MasterHUD:onKeyEvent(action, value)
-    if self.suspended or self.hudsHidden then return end
+    if self.suspended then return end
+
+    if self.hudsHidden then
+        local ownerId, ownerKind = self:getFullscreenOwner()
+        if ownerId ~= nil then
+            if ownerKind == "panel" then
+                local p = self.panels[ownerId]
+                if p ~= nil and p.visible and type(p.onInput) == "function"
+                    and (not p.adminOnly or self:isLocalAdmin()) then
+                    pcall(p.onInput, action, value)
+                end
+            end
+            return
+        end
+        for _, id in ipairs(self.panelOrder) do
+            local p = self.panels[id]
+            if p ~= nil and p.visible and type(p.onInput) == "function"
+                and p.visibleWhenHudsHidden
+                and (not p.adminOnly or self:isLocalAdmin()) then
+                local ok, handled = pcall(p.onInput, action, value)
+                if ok and handled then return end
+            end
+        end
+        return
+    end
+
     for _, id in ipairs(self.panelOrder) do
         local p = self.panels[id]
         if p ~= nil and p.visible and type(p.onInput) == "function"
