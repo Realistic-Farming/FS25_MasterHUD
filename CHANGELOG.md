@@ -13,6 +13,14 @@ the repo's git history and README.
 
 ## [Unreleased]
 
+## [1.2.0.0] - 2026-10-12
+
+> **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.
+
+### Fixed
+- With Master HUD installed, the HUD show/hide keys of Soil & Fertilizer, Seasonal Crop Stress, Fuel Costs, Income, NPC Favor, Random World Events and Workplace Triggers work again. Each key shows or hides that mod's HUD, as the Control Center button does; Soil, Crop Stress and Random World Events also work in a vehicle. Needs Settings Hub.
+- Hiding all HUDs no longer blanks a settings or tuning screen you have open: that screen stays drawn and keeps taking your mouse input until you close it.
+
 ## [1.1.0.0] - 2026-09-18
 
 ### Added
