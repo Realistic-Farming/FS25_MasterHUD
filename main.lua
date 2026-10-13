@@ -150,6 +150,91 @@ local MH_VEHICLE_SPECS = {
       up = false, down = true, always = false, startActive = true, after = showCabRow },
 }
 
+-- ---------------------------------------------------------
+-- SP04 (Iris's answer, tracking 4cd6218): the companions' HUD toggle keys.
+--
+-- Under MasterHUD these seven companions stand down their own HUD toggle
+-- registration (each gates it on MasterHUD being present), so the keys were
+-- listed in Controls and did nothing. MasterHUD registers exactly these seven,
+-- in the contexts each companion uses standalone, and a press runs that
+-- companion's existing Control Center delegate, as the Control Center's own
+-- button does (pcall(delegate.run)). Their F1 text stays hidden. Without
+-- MasterHUD each companion keeps its own registration.
+--
+-- A spec is present only while its companion has published a runnable delegate
+-- in SettingsHub's RfActionRegistry (g_currentMission.rfActionRegistry), which
+-- MhContextInput re-reads at every reconcile. Without SettingsHub there is no
+-- registry and nothing registers, as before.
+--
+-- Not here, deliberately:
+--   * TM_TOGGLE_HUD. TaxMod registers it with no MasterHUD gate and its handler
+--     toggles the Tax HUD itself, so a second registration would toggle twice.
+--   * The companions' HUD edit and drag actions. They have no Control Center
+--     delegate by the 2026-08-27 design; what they should do under MasterHUD is
+--     a Design question (tracking 37843ba).
+-- ---------------------------------------------------------
+
+local COMPANION_HUD_TOGGLES = {
+    { action = "CS_TOGGLE_HUD",  vehicle = true },   -- Seasonal Crop Stress
+    { action = "FC_TOGGLE_HUD" },                    -- Fuel Costs
+    { action = "IM_TOGGLE_HUD" },                    -- Income
+    { action = "NPC_TOGGLE_HUD" },                   -- NPC Favor
+    { action = "RWE_TOGGLE_HUD", vehicle = true },   -- Random World Events
+    { action = "SF_TOGGLE_HUD",  vehicle = true },   -- Soil & Fertilizer
+    { action = "WT_TOGGLE_HUD" },                    -- Workplace Triggers
+}
+
+--- The companion's Control Center delegate for an action, or nil when the
+--- registry, the delegate or its run function is missing.
+local function companionDelegate(actionName)
+    local mission = g_currentMission
+    local registry = mission ~= nil and mission.rfActionRegistry or nil
+    local delegates = registry ~= nil and registry.delegates or nil
+    local delegate = type(delegates) == "table" and delegates[actionName] or nil
+    if type(delegate) == "table" and type(delegate.run) == "function" then
+        return delegate
+    end
+    return nil
+end
+
+local function hideTextRow(binding, eventId)
+    binding:setActionEventTextVisibility(eventId, false)
+end
+
+--- Engine signature (target, actionName, inputValue, ...), forwarded by the
+--- context target. Zero inputValue is key-up.
+function MasterHUD:onCompanionHudToggleInput(actionName, inputValue)
+    if (inputValue or 0) <= 0 then return end
+    local delegate = companionDelegate(actionName)
+    if delegate == nil then return end
+    local ok, err = pcall(delegate.run)
+    if not ok then
+        MHLogger.warning("Companion HUD toggle %s failed: %s", tostring(actionName), tostring(err))
+    end
+end
+
+local companionIdFields = {}
+for _, toggle in ipairs(COMPANION_HUD_TOGGLES) do
+    local action = toggle.action
+    local function present() return companionDelegate(action) ~= nil end
+    local playerIdField = "companionHud_" .. action .. "_player"
+    MH_PLAYER_SPECS[#MH_PLAYER_SPECS + 1] = {
+        action = action, handler = "onCompanionHudToggleInput", idField = playerIdField,
+        up = false, down = true, always = false, startActive = true,
+        present = present, after = hideTextRow,
+    }
+    companionIdFields[#companionIdFields + 1] = playerIdField
+    if toggle.vehicle then
+        local vehicleIdField = "companionHud_" .. action .. "_vehicle"
+        MH_VEHICLE_SPECS[#MH_VEHICLE_SPECS + 1] = {
+            action = action, handler = "onCompanionHudToggleInput", idField = vehicleIdField,
+            up = false, down = true, always = false, startActive = true,
+            present = present, after = hideTextRow,
+        }
+        companionIdFields[#companionIdFields + 1] = vehicleIdField
+    end
+end
+
 -- Install both wrappers at module load (must wrap before first registerActionEvents).
 -- Installed once per loaded script environment; the record on the class table
 -- makes a re-sourced copy adopt the existing wrappers instead of stacking.
@@ -182,6 +267,31 @@ end
 -- Mission lifecycle
 -- ---------------------------------------------------------
 
+-- SP04: the owning player's first PLAYER registration runs while the player
+-- loads (Player.lua:204-208), and the companions publish their delegates in
+-- their own loadMission00Finished hooks, which run after MasterHUD's (MasterHUD
+-- loads first). Neither door sees a delegate, so on foot the companion toggles
+-- would stay unregistered until the next PLAYER rebuild (a vehicle exit).
+-- CURRENT_MISSION_LOADED is published when the loading screen is dismissed
+-- (MPLoadingScreen.lua:189), after every loadMission00Finished hook, so one
+-- PLAYER catch-up there registers them for the first press. A complete set
+-- costs nothing (no transaction).
+local function onCurrentMissionLoaded()
+    MhContextInput.catchUpPlayer(inputRecord, MH_PLAYER_SPECS)
+end
+
+local function subscribeLoadedCatchUp()
+    if g_messageCenter == nil or g_messageCenter.subscribeOneshot == nil then return end
+    if MessageType == nil or MessageType.CURRENT_MISSION_LOADED == nil then return end
+    g_messageCenter:subscribeOneshot(MessageType.CURRENT_MISSION_LOADED, onCurrentMissionLoaded, inputRecord)
+end
+
+local function unsubscribeLoadedCatchUp()
+    if g_messageCenter == nil or g_messageCenter.unsubscribe == nil then return end
+    if MessageType == nil or MessageType.CURRENT_MISSION_LOADED == nil then return end
+    g_messageCenter:unsubscribe(MessageType.CURRENT_MISSION_LOADED, inputRecord)
+end
+
 local function onMissionLoad(mission)
     if mission ~= nil then
         mission.masterHUD = masterHUD
@@ -189,6 +299,7 @@ local function onMissionLoad(mission)
     -- RSF-F201: bind the surviving instance as input owner of this mission and
     -- mint fresh per-context forwarding targets. Wrappers are not reinstalled.
     activateInput(mission)
+    subscribeLoadedCatchUp()
     loadHidePreference()
     MHLogger.info("MasterHUD active (mod 3, UI renderer + suite hide/edit)")
 end
@@ -197,8 +308,12 @@ local function onMissionDelete()
     -- RSF-F201: retire the input owner first. Old targets go inert; the captured
     -- predecessors stay installed so no neighbour's wrapper is unhooked.
     MhContextInput.retire(inputRecord)
+    unsubscribeLoadedCatchUp()
     masterHUD.playerToggleEventId, masterHUD.playerEditEventId = nil, nil
     masterHUD.vehicleToggleEventId, masterHUD.vehicleEditEventId = nil, nil
+    for _, idField in ipairs(companionIdFields) do
+        masterHUD[idField] = nil
+    end
     masterHUD:delete()
     getfenv(0)["g_masterHUD"] = nil
     if g_currentMission ~= nil then
